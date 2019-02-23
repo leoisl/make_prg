@@ -12,6 +12,8 @@
 #include <sstream>
 #include <cstdio>
 
+
+//utility functions (auto explanatory)
 class Utils {
 public:
     static void fatalError (const std::string &message) {

@@ -21,6 +21,7 @@ private:
     std::string sep;
     std::string prg;
 
+    //read the MSA from a fasta file and put it in MSA
     void readMSAFromFastaFile(const std::string &filepath) {
       auto lines = Utils::getVectorStringFromFile(filepath);
       for (const auto &line : lines) {
@@ -29,6 +30,7 @@ private:
       }
     }
 
+    //builds the consensus string
     std::string buildConsensusString() {
       size_t nbColumns = MSA[0].size();
       for (size_t j=0; j<nbColumns; ++j) {
@@ -46,6 +48,9 @@ private:
       return consensusString;
     }
 
+    //Build a graph representing this MSA
+    //Common regions >= k compose the node of the graph
+    //Arcs between the nodes are the sequences between these common regions
     void buildGraph() {
       //build first the nodes
       //let us add a dummy start node - it makes things easier
@@ -54,7 +59,7 @@ private:
         graph[vertexDescriptor].begin = graph[vertexDescriptor].end = 0;
       }
 
-
+      //build the real nodes
       for (size_t i=0; i<consensusString.size(); ++i) {
         if (consensusString[i]!='?') {
           size_t j;
@@ -99,6 +104,7 @@ private:
       }
     }
 
+    //returns true if the start node is truly a dummy node, or it has a purpose
     bool itIsATrulyDummyStartNode() const {
       auto currentEdgeItAndEndEdgeIt = out_edges(0, graph);
       decltype(currentEdgeItAndEndEdgeIt.first) currentEdgeIt, endEdgeIt;
@@ -111,6 +117,7 @@ private:
       return true;
     }
 
+    //returns true if the end node is truly a dummy node, or it has a purpose
     bool itIsATrulyDummyEndNode() const {
       auto currentEdgeItAndEndEdgeIt = in_edges(int(num_vertices(graph))-1, graph);
       decltype(currentEdgeItAndEndEdgeIt.first) currentEdgeIt, endEdgeIt;
@@ -122,6 +129,8 @@ private:
       }
       return true;
     }
+
+
 
 public:
     BuildPRG(const std::string &filepath, int k=3, std::string sep=" ") : MSA(), k(k), consensusString(), graph(), sep(sep) {
@@ -135,25 +144,29 @@ public:
       auto currentAndEndNodeItPair = vertices(graph);
       decltype(currentAndEndNodeItPair.first) currentNodeIt, endNodeIt;
       std::tie(currentNodeIt, endNodeIt) = currentAndEndNodeItPair;
-      currentNodeIt+=int(itIsATrulyDummyStartNode());
-      endNodeIt-=int(itIsATrulyDummyEndNode());
-
-      //std::cout << "*currentNodeIt: " << *currentNodeIt << std::endl;
-      //std::cout << "*endNodeIt: " << *endNodeIt << std::endl;
+      bool startNodeIsDummy = itIsATrulyDummyStartNode();
+      currentNodeIt+=int(startNodeIsDummy);
+      bool endNodeIsDummy = itIsATrulyDummyEndNode();
+      endNodeIt-=int(endNodeIsDummy);
 
       int varSiteMarker = 5;
       int alleleSiteMarker = 6;
       std::stringstream ss;
 
+      //goes through all nodes, from left to right
       for (; currentNodeIt != endNodeIt; ++currentNodeIt ) {
-        if (out_degree(*currentNodeIt, graph)>0 && (currentNodeIt!=endNodeIt-1 || (!itIsATrulyDummyEndNode() && currentNodeIt==endNodeIt-1))) {
 
-          //get the out-edges of currentNodeIt
+        //should I explore this node?
+        if (out_degree(*currentNodeIt, graph)>0 && (currentNodeIt!=endNodeIt-1 || (!endNodeIsDummy && currentNodeIt==endNodeIt-1))) {
+          //yeah
           auto currentEdgeItAndEndEdgeIt = out_edges(*currentNodeIt, graph);
           decltype(currentEdgeItAndEndEdgeIt.first) currentEdgeIt, endEdgeIt;
 
+          //print the node seq
           ss << graph[*currentNodeIt].seq << sep << varSiteMarker;
           bool printAlleleSiteMarker=false;
+
+          //explore edge
           for (std::tie(currentEdgeIt, endEdgeIt) = currentEdgeItAndEndEdgeIt;
                currentEdgeIt<endEdgeIt; ++currentEdgeIt) {
             //print each out-edge as an allele
@@ -161,7 +174,6 @@ public:
               ss << sep << alleleSiteMarker;
             else
               printAlleleSiteMarker = true;
-
             ss << sep << graph[*currentEdgeIt].seq;
           }
           ss << sep << varSiteMarker << sep;
@@ -169,10 +181,9 @@ public:
           alleleSiteMarker+=2;
         }
 
-        if (currentNodeIt == endNodeIt-1) {
-          //last one
+        //print the last one
+        if (currentNodeIt == endNodeIt-1)
           ss << graph[*currentNodeIt].seq;
-        }
       }
 
       return ss.str();

@@ -5,6 +5,7 @@
 #include "BuildPRG.h"
 
 int main(void) {
+  //same tests from test_make_prg.py
   std::vector <std::string> files = {"../test/match.fa",
                                      "../test/nonmatch.fa",
                                      "../test/match.nonmatch.fa",

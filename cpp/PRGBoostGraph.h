@@ -26,8 +26,7 @@ struct EdgeInfo {
 typedef boost::property<boost::vertex_index_t, std::size_t, VertexInfo> VertexProps;
 typedef boost::property<boost::edge_index_t, std::size_t, EdgeInfo> EdgeProps;
 
-
-
+//declare the Boost graph we want
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, VertexProps, EdgeProps> BoostGraph;
 
 #endif //MAKE_PRG_PRGBOOSTGRAPH_H
