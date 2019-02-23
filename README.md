@@ -13,6 +13,10 @@ Graph-based approach, I'd say many things are wrong, but maybe can be built upon
 ## Output:
 Last 5 tests fail:
 ```
+[TEST 0]: OK
+File: ../test/match.fa
+COMPUTED PRG: ACGTGTTTTGTAACTGTGCCACACTCTCGAGACTGCATATGTGTC
+CORRECT  PRG: ACGTGTTTTGTAACTGTGCCACACTCTCGAGACTGCATATGTGTC
 ===================================================
 [TEST 1]: OK
 File: ../test/nonmatch.fa
