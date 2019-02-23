@@ -1,3 +1,82 @@
+# A first try at C++ make_prg
+
+Graph-based approach, I'd say many things are wrong, but maybe can be built upon this (or not!)
+
+## Build and compile:
+`mkdir build && cd build && cmake .. && make`
+
+
+## Running (will run the test cases):
+`./make_prg`
+
+
+## Output:
+Last 5 tests fail:
+```
+===================================================
+[TEST 1]: OK
+File: ../test/nonmatch.fa
+COMPUTED PRG:  5 AAACGTGGTT 6 CCCCCCCCCC 5
+CORRECT  PRG:  5 AAACGTGGTT 6 CCCCCCCCCC 5
+===================================================
+[TEST 2]: OK
+File: ../test/match.nonmatch.fa
+COMPUTED PRG: AAACG 5 TGGTT 6 CCCCC 5
+CORRECT  PRG: AAACG 5 TGGTT 6 CCCCC 5
+===================================================
+[TEST 3]: OK
+File: ../test/nonmatch.match.fa
+COMPUTED PRG:  5 AAACGT 6 CCCCCC 5 GGTT
+CORRECT  PRG:  5 AAACGT 6 CCCCCC 5 GGTT
+===================================================
+[TEST 4]: OK
+File: ../test/match.nonmatch.match.fa
+COMPUTED PRG: AAACG 5 T 6 C 5 GGTT
+CORRECT  PRG: AAACG 5 T 6 C 5 GGTT
+===================================================
+[TEST 5]: OK
+File: ../test/shortmatch.nonmatch.match.fa
+COMPUTED PRG:  5 AAACGT 6 ATTTTC 5 GGTT
+CORRECT  PRG:  5 AAACGT 6 ATTTTC 5 GGTT
+===================================================
+[TEST 6]: OK
+File: ../test/match.nonmatch.shortmatch.fa
+COMPUTED PRG: AAAC 5 GTGGTT 6 CCCCCT 5
+CORRECT  PRG: AAAC 5 GTGGTT 6 CCCCCT 5
+===================================================
+[TEST 7]: ***FAILED***
+File: ../test/match.staggereddash.fa
+COMPUTED PRG: AAACG 5 TG-- 6 --TG 5 GTT
+CORRECT  PRG: AAACGTGGTT
+===================================================
+[TEST 8]: ***FAILED***
+File: ../test/contains_n.fa
+COMPUTED PRG: AAA 5 CGT 6 NGC 5 GGTT
+CORRECT  PRG: AAACG 5 T 6 C 5 GGTT
+===================================================
+[TEST 9]: ***FAILED***
+File: ../test/contains_RYKMSW.fa
+COMPUTED PRG: AAACG 5 Y 6 C 5 GGTT
+CORRECT  PRG: AAACG 5 T 6 C 5 GGTT
+===================================================
+[TEST 10]: ***FAILED***
+File: ../test/contains_n_and_RYKMSW.fa
+COMPUTED PRG:  5 AANCGY 6 AAACGC 5 GGTT
+CORRECT  PRG: AAACG 5 T 6 C 5 GGTT
+===================================================
+[TEST 11]: ***FAILED***
+File: ../test/contains_n_and_RYKMSW_no_variants.fa
+COMPUTED PRG: AAA 5 CGT 6 TNC 5 GGTT
+CORRECT  PRG: AAACGTGGTT
+===================================================
+```
+
+
+
+# ORIGINAL README:
+
+
+
 # make_prg
 Code to create a PRG for input to Pandora (https://github.com/rmcolq/pandora) from a Multiple Sequence Alignment file.
 
