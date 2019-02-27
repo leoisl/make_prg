@@ -1,0 +1,10 @@
+Points to clarify:
+
+1/ Translation from python code to C++ code only, or other approaches to attack the problem are accepted?
+
+2/ shall we compress alleles? e.g. AAACG 5 A 6 C 6 A 6 C 5 GGTT can be compressed into (compressing identical alleles) AAACG 5 A 6 C 5 GGTT, but the PRG lose the information from which allele each variation comes, but we have a more compact PRG... not sure what should be done.
+
+3/ Implement a dynamic graph approach:
+	1/ 1 MSA is added to the graph as a node;
+	2/ A next MSA is added by breaking the graph into the graph that represent all MSA;
+	3/ This is dynamic: we can just add new MSA to previously computed graphs, and that's it.
