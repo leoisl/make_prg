@@ -17,25 +17,30 @@ def contains_only(seq, aset):
 
 def get_interval_seqs(interval_alignment):
     """Replace - with nothing, remove seqs containing N or other non-allowed letters
-    and duplicate sequences containing RYKMSW, replacing with AGCT alternatives """
+    and duplicate sequences containing RYKMSW, replacing with AGCT alternatives
+
+    Leandro: I think this takes as input a bunch of alignment rows, and build the unique alignment rows.
+    It removes all seqs containing N. Removes from the alignment all -.
+    Then, for each RYKMSW, replace with the candidates, building all valid sequences
+    """
     allowed = ['A','C','G','T','R','Y','K','M','S','W']
     iupac = {'R': ['G', 'A'], 'Y': ['T', 'C'], 'K': ['G', 'T'], 'M': ['A', 'C'], 'S': ['G', 'C'], 'W': ['A', 'T']}
     seqs = []
-    for s in list(remove_duplicates([str(record.seq).replace('-', '').upper() for record in interval_alignment])):
-        if contains_only(s, allowed):
+    for s in list(remove_duplicates([str(record.seq).replace('-', '').upper() for record in interval_alignment])): #get all alignments, remove '-', upper(), and remove alignment duplicates (alternative: transforming this list in set() to remove duplicates)
+        if contains_only(s, allowed): #check if we have only the allowed chars
             new_seqs = [s]
             for letter in iupac.keys():
                 letter_seqs = []
                 for t in new_seqs:
                     if letter in t:
-                        letter_seqs.append(t.replace(letter, iupac[letter][0]))
-                        letter_seqs.append(t.replace(letter, iupac[letter][1]))
+                        letter_seqs.append(t.replace(letter, iupac[letter][0])) #so we first replace all Rs by Gs
+                        letter_seqs.append(t.replace(letter, iupac[letter][1])) #and then by As, but shouldn't we do all 2^|R| combinations? #TODO: not sure if it is a bug or not, check this with a counter-example
                     else:
                         letter_seqs.append(t)
                 new_seqs = letter_seqs
             seqs.extend(new_seqs)
     ret_list = list(set(seqs))
-    if len(ret_list) == 0:
+    if len(ret_list) == 0: #we enter here if all seqs contain at least one N
         print("Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense")
         assert len(ret_list) > 0
     return list(set(seqs))
@@ -50,11 +55,11 @@ class AlignedSeq(object):
         self.msa_file = msa_file
         self.alignment_format = alignment_format
         self.max_nesting = max_nesting
-        self.nesting_level = nesting_level
+        self.nesting_level = nesting_level #recursive call variable - the current nesting level we are
         self.min_match_length = min_match_length
-        self.site = site
-        self.alignment = alignment
-        if not self.alignment:
+        self.site = site #recursive call variable - the current site number
+        self.alignment = alignment #recursive call variable - the subalignment from which a nested prg must be built from
+        if not self.alignment: #if the subalignment in not given, we read the whole MSA fro the file
             logging.info("Read from MSA file %s", self.msa_file)
             if ".gz" in self.msa_file:
                 logging.debug("MSA is gzipped")
@@ -63,20 +68,21 @@ class AlignedSeq(object):
                 handle.close()
             else:
                 self.alignment = AlignIO.read(self.msa_file, self.alignment_format)
-        self.interval = interval
-        self.num_seqs = len(self.alignment)
+        self.interval = interval #recursive call variable - the interval in which we are working - the interval of the subalignment
+        self.num_seqs = len(self.alignment) #nb of seqs in the subaligment
         self.consensus = self.get_consensus()
         self.length = len(self.consensus)
-        (self.match_intervals, self.non_match_intervals) = self.get_match_intervals
-        self.check_nonmatch_intervals()
+        (self.match_intervals, self.non_match_intervals) = self.get_match_intervals #match intervals: where we have >= min_match_length_columns matching, non_match_intervals: the other intervals
+        self.check_nonmatch_intervals() #fix self.non_match_intervals: if some of these intervals correspond to only one seq, add them to match intervals (sometimes this happens due to sub-alignments)
         self.all_intervals = self.match_intervals + self.non_match_intervals
         logging.info("Non match intervals: %s", self.non_match_intervals)
         self.all_intervals.sort()
         if self.nesting_level == 1:
+            # computes the length of all match intervals
             self.length_match_intervals = 0
             for interval in self.match_intervals:
                 self.length_match_intervals += interval[1] - interval[0] + 1
-            self.prop_in_match_intervals = self.length_match_intervals / float(self.length)
+            self.prop_in_match_intervals = self.length_match_intervals / float(self.length) #computes the proportion
 
         # properties for stats
         self.subAlignedSeqs = {}
@@ -84,13 +90,13 @@ class AlignedSeq(object):
         # make prg
         self.delim_char = " "
         self.prg = ''
-        if prg_file:
+        if prg_file: #if PRG file already exists, just read it and leave
             logging.info("Reading from a PRG file which already exists. To regenerate, delete it.")
             with open(prg_file, 'r') as f:
                 self.prg = f.read()
         else:
-            self.prg = self.get_prg()
-        self.kmer_dict = {}
+            self.prg = self.get_prg() #make the prg file itself
+        self.kmer_dict = {} #kmerseq to id of the kmer - I guess this does not to be an object member variable
 
     def get_consensus(self):
         """Given a set of aligment records from AlignIO, creates
@@ -98,11 +104,15 @@ class AlignedSeq(object):
         Lower and upper case are equivalent
         Non AGCT symbols RYKMSW result in non-consensus and are substituted in graph
         N results in consensus at that position."""
+        #Note: '-' is taken into account when defining the consensus. But you can have a column full of '-' if working on a sub-alignment
+        #TODO: might be good to write some unit tests for this function so that I completely understand some cases in here
         first_string = str(self.alignment[0].seq)
         consensus_string = ''
         for i, letter in enumerate(first_string):
             consensus = True
             for record in self.alignment:
+                #TODO: Doubt: should not we also check if letter.upper() in ['R','Y','K','M','S','W']?
+                #TODO: some conditions here could be put in the first loop, making things a little bit more efficient (but no game changer though...)
                 if (record.seq[i].upper() != "N" and letter.upper() != "N") and (record.seq[i].upper() != letter.upper() or record.seq[i].upper() in ['R','Y','K','M','S','W']):
                     consensus = False
                     break
@@ -150,13 +160,13 @@ class AlignedSeq(object):
                     match_count += 1
                 elif match_count > 0:
                     # Have reached a non-match. Check if previous match string is long enough to add to match_regions
-                    match_string = self.consensus[match_start: match_start + match_count].replace('-', '')
+                    match_string = self.consensus[match_start: match_start + match_count].replace('-', '') #Leandro: remove "-" due to subalignments
                     match_len = len(match_string)
                     logging.debug("have match string %s" % match_string)
 
                     if match_len >= self.min_match_length:
                         # if the non_match sequences in the interval are really the same, add a match interval
-                        interval_alignment = self.alignment[:, non_match_start:match_start + 1]
+                        interval_alignment = self.alignment[:, non_match_start:match_start + 1] #interval alignment is the subalignment from the last non-match until the first match (the edges in my model)
                         interval_seqs = get_interval_seqs(interval_alignment)
                         if non_match_start < match_start and len(interval_seqs) > 1:
                             non_match_intervals.append([non_match_start, match_start - 1])
@@ -223,6 +233,7 @@ class AlignedSeq(object):
     def check_nonmatch_intervals(self):
         """Goes through non-match intervals and makes sure there is more than one sequence there, else makes it a match
         interval."""
+        #TODO: write some test cases to understand better this, but I guess that due to sub-alignments, some non_match_intervals might contain only one seq, and as such must become a match interval
         for i in reversed(range(len(self.non_match_intervals))):
             interval = self.non_match_intervals[i]
             interval_alignment = self.alignment[:, interval[0]:interval[1] + 1]
@@ -236,7 +247,7 @@ class AlignedSeq(object):
     def kmeans_cluster_seqs_in_interval(self, interval):  # , kmer_size=self.min_match_length):
         """Divide sequences in interval into subgroups of similar
            sequences. Return a list of lists of ids."""
-        if interval[1] - interval[0] <= self.min_match_length:
+        if interval[1] - interval[0] <= self.min_match_length: #variation is too small - I don't even think we enter this case...
             logging.info("Small variation site in interval %s \n", interval)
             logging.debug("interval[1] - interval[0] <= self.min_match_length: %d <= %d", interval[1] - interval[0],
                           self.min_match_length)
@@ -249,17 +260,17 @@ class AlignedSeq(object):
                                interval_seqs]
         else:
             logging.debug("Get kmeans partition of interval [%d, %d]", interval[0], interval[1])
-            interval_alignment = self.alignment[:, interval[0]:interval[1] + 1]
-            interval_seq_dict = {}
-            small_interval_seq_dict = {}
-            seq_dict_keys = []
+            interval_alignment = self.alignment[:, interval[0]:interval[1] + 1] #get the MSA of the (sub)-alignment
+            interval_seq_dict = {} #alignment seq -> sequence id if alignment seq >= self.min_match_length
+            small_interval_seq_dict = {} #alignment seq -> sequence id if alignment seq < self.min_match_length
+            seq_dict_keys = [] #all keys (alignment seqs)
 
-            for record in interval_alignment:
-                seq = str(record.seq).replace('-', '')
+            for record in interval_alignment: #add the alignments to the inverval_seq_dict or to the small_interval_seq_dict, depending on their size without -
+                seq = str(record.seq).replace('-', '') #remove "-" from the alignment
                 if seq in list(interval_seq_dict.keys()):
-                    interval_seq_dict[seq].append(record.id)
+                    interval_seq_dict[seq].append(record.id) #just add a new id to the list
                 elif seq in list(small_interval_seq_dict.keys()):
-                    small_interval_seq_dict[seq].append(record.id)
+                    small_interval_seq_dict[seq].append(record.id) #just add a new id to the list
                 elif len(seq) >= self.min_match_length:
                     interval_seq_dict[seq] = [record.id]
                     seq_dict_keys.append(seq)
@@ -322,7 +333,7 @@ class AlignedSeq(object):
                 number_of_clusters = 1
                 logging.debug("number of clusters: %d, inertia: %f", number_of_clusters, cluster_inertia)
                 while (cluster_inertia > 0
-                       and cluster_inertia > pre_cluster_inertia / 2
+                       and cluster_inertia > pre_cluster_inertia / 2 #we cluster until we reach less than half of the initial cluster inertia
                        and number_of_clusters <= len(interval_seqs)):
                     number_of_clusters += 1
                     kmeans = KMeans(n_clusters=number_of_clusters, random_state=2).fit(seq_kmer_counts)
@@ -374,7 +385,7 @@ class AlignedSeq(object):
             "should have some alternate alleles, not only one sequence, this is a non-match interval"
         return return_id_lists
 
-    def get_sub_alignment_by_list_id(self, list_of_id, interval=None):
+    def get_sub_alignment_by_list_id(self, list_of_id, interval=None): #get the subalignments according to the list ID
         list_records = [record for record in self.alignment if record.id in list_of_id]
         sub_alignment = MultipleSeqAlignment(list_records)
         if interval:
@@ -387,12 +398,12 @@ class AlignedSeq(object):
         # skip_char = False
 
         for interval in self.all_intervals:
-            if interval in self.match_intervals:
+            if interval in self.match_intervals: #alternative: add a property to the interval var
                 # WLOG can take first sequence as all same in this interval
-                sub_alignment = self.alignment[:, interval[0]:interval[1] + 1]
-                seqs = get_interval_seqs(sub_alignment)
+                sub_alignment = self.alignment[:, interval[0]:interval[1] + 1] #sub_alignment are all columns of the MSA of the match interval
+                seqs = get_interval_seqs(sub_alignment) #get a single sequencing describing this match alignment
                 assert(len(seqs) > 0)
-                seq = seqs[0]
+                seq = seqs[0] #since it is a match, we should have one single sequence here
                 prg += seq
 
             else:
@@ -402,7 +413,7 @@ class AlignedSeq(object):
                 variant_seqs = []
 
                 # Define the variant seqs to add
-                if (self.nesting_level == self.max_nesting) or (interval[1] - interval[0] <= self.min_match_length):
+                if (self.nesting_level == self.max_nesting) or (interval[1] - interval[0] <= self.min_match_length): #if we reached the max nesting level (no recursion anymore) or if the interval is too small (no recursion call on very small non_match_intervals)
                     # Have reached max nesting level, just add all variants in interval.
                     logging.debug("Have reached max nesting level or have a small variant site, so add all variant "
                                   "sequences in interval.")
@@ -418,6 +429,12 @@ class AlignedSeq(object):
                     list_list_id = self.kmeans_cluster_seqs_in_interval(interval)
                     list_sub_alignments = [self.get_sub_alignment_by_list_id(list_id, interval) for list_id in
                                            list_list_id]
+
+                    #TODO: remove this long debug stuff
+                    logging.debug("Clustering:")
+                    logging.debug("Input alignments: %s" % str(self.alignment[:, interval[0]:interval[1] + 1]))
+                    logging.debug("Output clusters: %s" % str(list_list_id))
+
                     num_classes_in_partition = len(list_list_id)
 
                     if len(list_sub_alignments) == self.num_seqs:
@@ -433,6 +450,7 @@ class AlignedSeq(object):
 
                     while len(list_sub_alignments) > 0:
                         sub_alignment = list_sub_alignments.pop(0)
+                        #recursive call on each subgroup
                         sub__aligned_seq = AlignedSeq(msa_file=self.msa_file,
                                                       alignment_format=self.alignment_format,
                                                       max_nesting=self.max_nesting,
@@ -442,7 +460,7 @@ class AlignedSeq(object):
                                                       alignment=sub_alignment,
                                                       interval=interval)
                         variant_seqs.append(sub__aligned_seq.prg)
-                        self.site = sub__aligned_seq.site
+                        self.site = sub__aligned_seq.site #update the site number to the next available site number
 
                         if recur:
                             # logging.debug("None not in snp_scores - try to add sub__aligned_seq to list in
@@ -627,7 +645,7 @@ def main():
         logging.info("Using info logging")
     logging.info("Input parameters max_nesting: %d, min_match_length: %d", args.max_nesting, args.min_match_length)
 
-    if os.path.isfile('%s.prg' % prefix):
+    if os.path.isfile('%s.prg' % prefix): #PRG already exists, we just write the GFA file
         prg_file = '%s.prg' % prefix
         aseq = AlignedSeq(args.MSA, alignment_format=args.alignment_format, max_nesting=args.max_nesting,
                           min_match_length=args.min_match_length, prg_file=prg_file)
