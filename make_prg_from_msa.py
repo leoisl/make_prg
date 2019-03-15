@@ -523,10 +523,12 @@ class AlignedSeq(object):
 
             # add pre-var site string and links from previous seq fragments
             if prgs[0] != '':
-                self.gfa_string += "S\t%d\t%s\tRC:i:0\n" % (self.gfa_id, prgs[0])
+                self.gfa_string += "S\t%d\t%s\tRC:i:0\n" % (self.gfa_id, prgs[0]) #TODO: replace by list and concatenate with join
+                self.gfa_csv.append("%d,%s" % (self.gfa_id, prgs[0]))
             else:
                 # adds an empty node for empty pre var site seqs
                 self.gfa_string += "S\t%d\t%s\tRC:i:0\n" % (self.gfa_id, "*")
+                self.gfa_csv.append("%d,%s" % (self.gfa_id, "*"))
             pre_var_id = self.gfa_id
             self.gfa_id += 1
             for id in end_ids:
@@ -553,8 +555,10 @@ class AlignedSeq(object):
         # finally add the final bit of sequence after variant site
         if prg_string != '':
             self.gfa_string += "S\t%d\t%s\tRC:i:0\n" % (self.gfa_id, prg_string)
+            self.gfa_csv.append("%d,%s" % (self.gfa_id, prg_string))
         else:
             self.gfa_string += "S\t%d\t%s\tRC:i:0\n" % (self.gfa_id, "*")
+            self.gfa_csv.append("%d,%s" % (self.gfa_id, "*"))
         for id in end_ids:
             self.gfa_string += "L\t%d\t+\t%d\t+\t0M\n" % (id, self.gfa_id)
         end_ids = []
@@ -564,13 +568,16 @@ class AlignedSeq(object):
 
     def write_gfa(self, outfile):
         """Creates a gfa file from the prg."""
-        with open(outfile, 'w') as f:
+        with open(outfile, 'w') as f, open(outfile+".csv", "w") as csvFile:
             # initialize gfa_string, id and site, then update string with the prg
             self.gfa_string = "H\tVN:Z:1.0\tbn:Z:--linear --singlearr\n"
             self.gfa_id = 0
             self.gfa_site = 5
+            self.gfa_csv = []
             self.get_gfa_string(prg_string=self.prg)
             f.write(self.gfa_string)
+            csvFile.write("node_id,sequence\n")
+            csvFile.write("\n".join(self.gfa_csv))
         return
 
     def write_prg(self, outfile):
