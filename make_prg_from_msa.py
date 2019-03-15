@@ -291,6 +291,7 @@ class AlignedSeq(object):
                         if seq not in list(self.kmer_dict.keys()):
                             self.kmer_dict[seq[i:i + self.min_match_length]] = n
                             n += 1
+                logging.debug("self.kmer_dict = %s"%str(self.kmer_dict))
                 logging.debug("These vectors have length %d" % n)
 
                 # transform to vectors using dict
@@ -301,6 +302,7 @@ class AlignedSeq(object):
                         counts[self.kmer_dict[seq[i:i + self.min_match_length]]] += 1
                     seq_kmer_counts[j] = counts
 
+                logging.debug("seq_kmer_counts = %s" % str(seq_kmer_counts))
                 # cluster sequences using kmeans
                 logging.debug("Now cluster:")
                 kmeans = KMeans(n_clusters=1, random_state=2).fit(seq_kmer_counts)
