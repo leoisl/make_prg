@@ -284,25 +284,30 @@ class AlignedSeq(object):
                 logging.debug("First transform sequences into kmer occurance vectors")
 
                 # make dict based on number of kmers in all sequences
-                self.kmer_dict = {}
-                n = 0
-                for j, seq in enumerate(interval_seqs):
-                    for i in range(len(seq) - self.min_match_length + 1):
-                        if seq not in list(self.kmer_dict.keys()):
-                            self.kmer_dict[seq[i:i + self.min_match_length]] = n
+                self.kmer_dict = {} #associate each kmer to an ID
+                n = 0 #n = kmer ID
+                for j, seq in enumerate(interval_seqs): #goes through all large enough seqs
+                    for i in range(len(seq) - self.min_match_length + 1): #goes through all kmers
+                        kmer = seq[i:i + self.min_match_length] #get the kmer
+                        if kmer not in self.kmer_dict.keys(): #is this kmer new?
+                            self.kmer_dict[kmer] = n #associate the kmer to an id
                             n += 1
                 logging.debug("self.kmer_dict = %s"%str(self.kmer_dict))
                 logging.debug("These vectors have length %d" % n)
 
+
                 # transform to vectors using dict
+                # describes the kmers of each sequence as a kmer spectrum (each vector has an ID, and seq_kmer_counts denotes the occurence of each kmer in each sequence)
                 seq_kmer_counts = np.zeros(shape=(len(interval_seqs), n))
                 for j, seq in enumerate(interval_seqs):
                     counts = np.zeros(n)
                     for i in range(len(seq) - self.min_match_length + 1):
-                        counts[self.kmer_dict[seq[i:i + self.min_match_length]]] += 1
+                        kmer = seq[i:i + self.min_match_length]
+                        counts[self.kmer_dict[kmer]] += 1
                     seq_kmer_counts[j] = counts
 
                 logging.debug("seq_kmer_counts = %s" % str(seq_kmer_counts))
+
                 # cluster sequences using kmeans
                 logging.debug("Now cluster:")
                 kmeans = KMeans(n_clusters=1, random_state=2).fit(seq_kmer_counts)
