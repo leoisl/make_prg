@@ -31,6 +31,8 @@ private:
       recursivelyBuildGraph(SubAlignment(0, MSA.size(), 0, MSA_NbColumns, &MSA), NULL_VERTEX_ID);
     }
 
+    VertexDescriptor createVertex(const SubAlignment &subAlignment, const IntervalType &intervalType);
+
 public:
     BuildPRG(const std::string &filepath, uint32_t k=3, std::string sep=" ") : MSA{}, k{k}, graph{}, sep{sep} {
       readMSAFromFastaFile(filepath);

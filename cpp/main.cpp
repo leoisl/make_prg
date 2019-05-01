@@ -11,9 +11,9 @@ int main(void) {
       logging::trivial::severity >= logging::trivial::debug
   );
 
+  /*
   //same tests from test_make_prg.py
-  std::vector <std::string> files = {"../test/nested.fa",
-                                     "../test/match.fa",
+  std::vector <std::string> files = {"../test/match.fa",
                                      "../test/nonmatch.fa",
                                      "../test/match.nonmatch.fa",
                                      "../test/nonmatch.match.fa",
@@ -25,8 +25,7 @@ int main(void) {
                                      "../test/contains_RYKMSW.fa",
                                      "../test/contains_n_and_RYKMSW.fa",
                                      "../test/contains_n_and_RYKMSW_no_variants.fa"};
-  std::vector <std::string> answers = {"TODO", //TODO
-  "ACGTGTTTTGTAACTGTGCCACACTCTCGAGACTGCATATGTGTC",
+  std::vector <std::string> answers = {"ACGTGTTTTGTAACTGTGCCACACTCTCGAGACTGCATATGTGTC",
                                        " 5 AAACGTGGTT 6 CCCCCCCCCC 5 ",
                                        "AAACG 5 TGGTT 6 CCCCC 5 ",
                                        " 5 AAACGT 6 CCCCCC 5 GGTT",
@@ -43,7 +42,6 @@ int main(void) {
   for (int i = 0; i < files.size(); i++) {
     BuildPRG buildPRG(files[i]);
 
-    /*
     auto prg = buildPRG.getPRG();
     std::cout << "[TEST " << i << "]: ";
     if (prg == answers[i])
@@ -55,6 +53,9 @@ int main(void) {
     std::cout << "COMPUTED PRG: " << prg << std::endl;
     std::cout << "CORRECT  PRG: " << answers[i] << std::endl;
     std::cout << "===================================================" << std::endl;
-     */
   }
+   */
+
+
+  BuildPRG buildPRG("../test/nested.fa");
 }

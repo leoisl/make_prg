@@ -33,6 +33,8 @@ public:
     Interval(uint32_t start, uint32_t end, IntervalType intervalType) :
         start{start}, end{end}, intervalType{intervalType}
     {}
+
+
 };
 
 class SubAlignment {

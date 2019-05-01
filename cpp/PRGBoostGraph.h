@@ -14,7 +14,7 @@
 struct VertexInfo {
 public:
     //the subalignment represented by this vertex
-    SubAlignment subalignments;
+    SubAlignment subAlignment;
     IntervalType intervalType;
     VertexInfo() = default;
     //TODO: remove this, boost always use default constructor
@@ -22,6 +22,20 @@ public:
     VertexInfo (const SubAlignment &subalignments, VertexType, vertexType) :
         subalignments{subalignments}, vertexType{vertexType} {}
     */
+    friend std::ostream& operator<<(std::ostream& os, const VertexInfo& vertexInfo) {
+        os << std::endl << "---------- VertexInfo [BEGIN] ---------" << std::endl;
+        switch (vertexInfo.intervalType) {
+            case NONMATCH:
+                os << "NONMATCH";
+                break;
+            case MATCH:
+                os << "MATCH";
+                break;
+        }
+        os << std::endl << vertexInfo.subAlignment;
+        os << "---------- VertexInfo [END] -----------" << std::endl;
+        return os;
+    }
 };
 
 //edge properties
@@ -36,5 +50,9 @@ typedef boost::property<boost::edge_index_t, uint32_t, EdgeInfo> EdgeProps;
 
 //declare the Boost graph we want
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, VertexProps, EdgeProps> BoostGraph;
+
+//typedefs to help
+typedef boost::graph_traits<BoostGraph>::vertex_descriptor VertexDescriptor;
+typedef boost::graph_traits<BoostGraph>::edge_descriptor EdgeDescriptor;
 
 #endif //MAKE_PRG_PRGBOOSTGRAPH_H

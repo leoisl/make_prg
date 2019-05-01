@@ -25,21 +25,50 @@ std::string SubAlignment::buildConsensusString() const {
 }
 
 
-//get the match and non-match intervals WRT the positions in the global MSA
 std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
   /**
    *  Returns a list of intervals in which we have
-   *  consensus sequences longer than k as match intervals and the rest as non-match intervals
+   *  consensus sequences longer than k as match intervals and the rest as non-match intervals.
+   *  Mostly inspired by https://github.com/rmcolq/make_prg/blob/master/make_prg_from_msa.py#L117
    * @param k : min_match_length
    */
   auto consensusString = buildConsensusString();
 
-
+  BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: consensusString = " << consensusString;
 
   std::vector<Interval> intervals;
   uint32_t matchCount = 0;
   uint32_t matchStart = 0;
   uint32_t nonMatchStart = 0;
+
+  int nbOfNonSpaceBases = std::count_if(consensus.begin(), consensus.end(),
+                                        [](char c){ return c!="-"});
+
+
+  if (nbOfNonSpaceBases < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
+    /* From Rachel:
+     * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
+     */
+
+    /**
+            if '*' in self.consensus:
+                interval_alignment = self.alignment[:, 0:self.length]
+                interval_seqs = get_interval_seqs(interval_alignment)
+                if len(interval_seqs) > 1:
+                    logging.debug("add short non-match whole interval [%d,%d]" %(0,self.length - 1))
+                    non_match_intervals.append([0, self.length - 1])
+                else:
+                    logging.debug("add short match whole interval [%d,%d]" %(0,self.length - 1))
+                    match_intervals.append([0, self.length - 1])
+            else:
+                match_intervals.append([0, self.length - 1])
+                logging.debug("add short match whole interval [%d,%d]" % (0, self.length - 1))
+
+     */
+    if (consensusString.find('*') != string::npos) { //if '*' in self.consensus:
+      
+    }
+  }
 
   for (size_t i=0; i<consensusString.size(); ++i) {
     if (consensusString[i]!='*') {
@@ -62,7 +91,6 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
 
 /*
 
-              logging.debug("consensus: %s" %self.consensus)
               if len(self.consensus.replace('-', '')) < self.min_match_length:
               # It makes no sense to classify a fully consensus sequence as
               # a non-match just because it is too short.
