@@ -113,7 +113,12 @@ class AlignedSeq(object):
             for record in self.alignment:
                 #TODO: Doubt: should not we also check if letter.upper() in ['R','Y','K','M','S','W']?
                 #TODO: some conditions here could be put in the first loop, making things a little bit more efficient (but no game changer though...)
-                if (record.seq[i].upper() != "N" and letter.upper() != "N") and (record.seq[i].upper() != letter.upper() or record.seq[i].upper() in ['R','Y','K','M','S','W']):
+                # if any is equals to N, then we have consensus
+                # if the bases are different, then NO consensus
+                # or if any sequence has RYKMSW, then no consensus
+                if (record.seq[i].upper() != "N" and letter.upper() != "N") \
+		                and (record.seq[i].upper() != letter.upper() \
+                             or record.seq[i].upper() in ['R','Y','K','M','S','W']):
                     consensus = False
                     break
             if consensus:
@@ -294,7 +299,7 @@ class AlignedSeq(object):
                 # first transform sequences into kmer occurance vectors using a dict
                 logging.debug("First transform sequences into kmer occurance vectors")
 
-                # make dict based on number of kmers in all sequences
+                # make dict based on all kmers in all sequences
                 self.kmer_dict = {} #associate each kmer to an ID
                 n = 0 #n = kmer ID
                 for j, seq in enumerate(interval_seqs): #goes through all large enough seqs
@@ -308,7 +313,7 @@ class AlignedSeq(object):
 
 
                 # transform to vectors using dict
-                # describes the kmers of each sequence as a kmer spectrum (each vector has an ID, and seq_kmer_counts denotes the occurence of each kmer in each sequence)
+                # describes the kmers of each sequence as a kmer spectrum (each kmer has an ID, and seq_kmer_counts denotes the occurence of each kmer in each sequence)
                 seq_kmer_counts = np.zeros(shape=(len(interval_seqs), n))
                 for j, seq in enumerate(interval_seqs):
                     counts = np.zeros(n)

@@ -34,6 +34,8 @@ int main(void) {
 
   for (int i = 0; i < files.size(); i++) {
     BuildPRG buildPRG(files[i]);
+
+    /*
     auto prg = buildPRG.getPRG();
     std::cout << "[TEST " << i << "]: ";
     if (prg == answers[i])
@@ -45,5 +47,6 @@ int main(void) {
     std::cout << "COMPUTED PRG: " << prg << std::endl;
     std::cout << "CORRECT  PRG: " << answers[i] << std::endl;
     std::cout << "===================================================" << std::endl;
+     */
   }
 }

@@ -12,11 +12,12 @@
 #include "Utils.h"
 #include <sstream>
 
+
 class BuildPRG {
 private:
     std::vector<std::string> MSA;
-    int k;
-    std::string consensusString;
+    uint32_t MSA_NbColumns;
+    uint32_t k;
     BoostGraph graph;
     std::string sep;
     std::string prg;
@@ -28,118 +29,61 @@ private:
         if (line[0]!='>')
           MSA.push_back(line);
       }
+      MSA_NbColumns = MSA[0].size();
     }
 
-    //builds the consensus string
-    std::string buildConsensusString() {
-      size_t nbColumns = MSA[0].size();
-      for (size_t j=0; j<nbColumns; ++j) {
-        char consensusBase=MSA[0][j];
-        for (size_t i=1; i<MSA.size(); ++i) {
-          //check
-          if (consensusBase!=MSA[i][j]) { //inconsistency, we are done
-            consensusBase = '?';
-            break; //go to next column
-          }
-        }
-        consensusString+=consensusBase;
+    void recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t parentVertexId) {
+      auto parentVertexDescriptor = add_vertex(graph);
+      graph[parentVertexDescriptor].subalignments = subAlignment; //TODO: use move semantics here
+      graph[parentVertexDescriptor].intervalType = NONMATCH;
+
+      if (parentVertexId != NULL_VERTEX_ID) {
+        //TODO: build the edge from parent to this node
       }
-      //std::cout << "consensus: " << consensusString << std::endl;
-      return consensusString;
+
+      //find the match/non-match regions and build the children of this node
+      {
+        //1. get the match and non-match regions
+        std::vector <Interval> intervals = subAlignment.getIntervals(k);
+
+        //2. create the nodes for each interval, and edges from the parent to these nodes
+        std::vector<decltype(parentVertexDescriptor)> nonMatchChildDescriptors;
+        for (const auto &interval : intervals) {
+          //create the node
+          auto childVertexDescriptor = add_vertex(graph);
+          //configure new vertex
+          graph[childVertexDescriptor].subalignments = SubAlignment(subAlignment.getSequencesNumbers(), interval.start,
+                                                                    interval.end, &MSA); //TODO: use move semantics here
+          graph[childVertexDescriptor].intervalType = interval.intervalType;
+
+          if (graph[childVertexDescriptor].intervalType == NONMATCH)
+            nonMatchChildDescriptors.push_back(childVertexDescriptor);
+
+          //create the edge
+          add_edge(parentVertexDescriptor, childVertexDescriptor, graph); //TODO: check return value?
+        }
+
+        //3. for each non-match child, cluster the sequences and create non match children
+        //TODO
+      }
     }
 
     //Build a graph representing this MSA
     //Common regions >= k compose the node of the graph
     //Arcs between the nodes are the sequences between these common regions
     void buildGraph() {
-      //build first the nodes
-      //let us add a dummy start node - it makes things easier
-      {
-        auto vertexDescriptor = add_vertex(graph);
-        graph[vertexDescriptor].begin = graph[vertexDescriptor].end = 0;
-      }
-
-      //build the real nodes
-      for (size_t i=0; i<consensusString.size(); ++i) {
-        if (consensusString[i]!='?') {
-          size_t j;
-          for (j=i+1; j<consensusString.size() && consensusString[j]!='?'; ++j);
-          if (j-i>=k){
-            //std::cout << "new node: " << consensusString.substr(i, j-i) << std::endl;
-            auto vertexDescriptor = add_vertex(graph);
-            graph[vertexDescriptor].seq = consensusString.substr(i, j-i);
-            graph[vertexDescriptor].begin = i;
-            graph[vertexDescriptor].end = j;
-          }
-          i=j-1;
-        }
-      }
-      //let us add a dummy end node - it makes things easier
-      {
-        auto vertexDescriptor = add_vertex(graph);
-        graph[vertexDescriptor].begin = graph[vertexDescriptor].end = consensusString.size()+1;
-      }
-
-      //build the arcs now
-      {
-        auto currentAndEndNodeItPair = vertices(graph);
-        decltype(currentAndEndNodeItPair.first) currentNodeIt, endNodeIt;
-        std::tie(currentNodeIt, endNodeIt) = currentAndEndNodeItPair;
-
-        auto lastNodeIt = currentNodeIt; //lastNode == first node
-        ++currentNodeIt; //currentNode == second  node
-        for (; currentNodeIt != endNodeIt; ++currentNodeIt ) {
-          //check if we need to build an arc
-          if (graph[*lastNodeIt].end <= graph[*currentNodeIt].begin) {
-            //yeah - add one edge for each sequence alignment
-            for (const auto &SA : MSA) {
-              auto edgeDescriptor = add_edge(*lastNodeIt, *currentNodeIt, graph).first;
-              auto edgeSeq = SA.substr(graph[*lastNodeIt].end, graph[*currentNodeIt].begin-graph[*lastNodeIt].end);
-              //std::cout << "[edgeSeq] = " << edgeSeq << std::endl;
-              graph[edgeDescriptor].seq = edgeSeq;
-            }
-          }
-          lastNodeIt = currentNodeIt;
-        }
-      }
+      recursivelyBuildGraph(SubAlignment(0, MSA.size(), 0, MSA_NbColumns, &MSA), NULL_VERTEX_ID);
     }
-
-    //returns true if the start node is truly a dummy node, or it has a purpose
-    bool itIsATrulyDummyStartNode() const {
-      auto currentEdgeItAndEndEdgeIt = out_edges(0, graph);
-      decltype(currentEdgeItAndEndEdgeIt.first) currentEdgeIt, endEdgeIt;
-      for (std::tie(currentEdgeIt, endEdgeIt) = currentEdgeItAndEndEdgeIt;
-           currentEdgeIt<endEdgeIt; ++currentEdgeIt) {
-        if (graph[*currentEdgeIt].seq != "") {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    //returns true if the end node is truly a dummy node, or it has a purpose
-    bool itIsATrulyDummyEndNode() const {
-      auto currentEdgeItAndEndEdgeIt = in_edges(int(num_vertices(graph))-1, graph);
-      decltype(currentEdgeItAndEndEdgeIt.first) currentEdgeIt, endEdgeIt;
-      for (std::tie(currentEdgeIt, endEdgeIt) = currentEdgeItAndEndEdgeIt;
-           currentEdgeIt<endEdgeIt; ++currentEdgeIt) {
-        if (graph[*currentEdgeIt].seq != "") {
-          return false;
-        }
-      }
-      return true;
-    }
-
-
 
 public:
-    BuildPRG(const std::string &filepath, int k=3, std::string sep=" ") : MSA(), k(k), consensusString(), graph(), sep(sep) {
+    BuildPRG(const std::string &filepath, uint32_t k=3, std::string sep=" ") : MSA{}, k{k}, graph{}, sep{sep} {
       readMSAFromFastaFile(filepath);
-      buildConsensusString();
       buildGraph();
     }
 
     //build the PRG traversing the graph
+    //Unsure if this is needed now
+      /*
     std::string getPRG() const {
       auto currentAndEndNodeItPair = vertices(graph);
       decltype(currentAndEndNodeItPair.first) currentNodeIt, endNodeIt;
@@ -188,6 +132,7 @@ public:
 
       return ss.str();
     }
+       */
 };
 
 

@@ -1,0 +1,127 @@
+01/05/2019 11:26:23 Using debug logging
+01/05/2019 11:26:23 Input parameters max_nesting: 10, min_match_length: 3
+01/05/2019 11:26:23 Read from MSA file test/nested.fa
+01/05/2019 11:26:23 consensus: AAAAAAAAAAAAAAA***********************CGTGCGTGCGTGCGTGCGTGCGTG
+01/05/2019 11:26:23 have match string AAAAAAAAAAAAAAA
+01/05/2019 11:26:23 add match interval to complete step [0,14]
+01/05/2019 11:26:23 at end have match string CGTGCGTGCGTGCGTGCGTGCGTG
+01/05/2019 11:26:23 add non-match interval at end as have alts [15,37]
+01/05/2019 11:26:23 add match interval at end [38,61]
+01/05/2019 11:26:23 Non match intervals: [[15, 37]]
+01/05/2019 11:26:23 Divide sequences into subgroups and define prg for each subgroup.
+01/05/2019 11:26:23 Get kmeans partition of interval [15, 37]
+01/05/2019 11:26:23 Add classes corresponding to 0 small sequences
+01/05/2019 11:26:23 Now add classes corresponding to 4 longer sequences
+01/05/2019 11:26:23 First transform sequences into kmer occurance vectors
+01/05/2019 11:26:23 self.kmer_dict = {'GGG': 0, 'TTT': 1, 'TTA': 2, 'TAT': 3, 'ATT': 4, 'TTC': 5, 'TCT': 6, 'CTT': 7, 'TTG': 8, 'TGT': 9, 'GTT': 10}
+01/05/2019 11:26:23 These vectors have length 11
+01/05/2019 11:26:23 seq_kmer_counts = [[2. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 6. 2. 2. 2. 2. 2. 2. 1. 1. 1.]
+ [0. 6. 1. 1. 1. 3. 3. 3. 1. 1. 1.]
+ [0. 6. 2. 2. 2. 0. 0. 0. 3. 3. 3.]]
+01/05/2019 11:26:23 Now cluster:
+01/05/2019 11:26:23 number of clusters: 1, inertia: 72.750000
+01/05/2019 11:26:23 number of clusters: 2, inertia: 24.000000
+01/05/2019 11:26:23 Extract equivalence classes from this partition
+01/05/2019 11:26:23 Merge return id lists for the partitions
+01/05/2019 11:26:23 want to add (big) return ids: ['1']
+01/05/2019 11:26:23 add (big) return ids 0: ['1']
+01/05/2019 11:26:23 want to add (big) return ids: ['2']
+01/05/2019 11:26:23 add (big) return ids 1: ['2', '3', '4']
+01/05/2019 11:26:23 Clustering:
+01/05/2019 11:26:23 Input alignments: SingleLetterAlphabet() alignment with 4 rows and 23 columns
+-------GGGG------------ 1
+TTTATTTCTTTGTTTATTTCTTT 2
+TTTCTTTATTTCTTTCTTTGTTT 3
+TTTGTTTGTTTATTTGTTTATTT 4
+01/05/2019 11:26:23 Output clusters: [['1'], ['2', '3', '4']]
+01/05/2019 11:26:23 subAlignedSeqs now has keys: [15]
+01/05/2019 11:26:23 consensus: -------GGGG------------
+01/05/2019 11:26:23 at end have match string GGGG
+01/05/2019 11:26:23 add match interval at end as only one seq [0,22]
+01/05/2019 11:26:23 Non match intervals: []
+01/05/2019 11:26:23 consensus: TTT*TTT*TTT*TTT*TTT*TTT
+01/05/2019 11:26:23 have match string TTT
+01/05/2019 11:26:23 add match interval to complete step [0,2]
+01/05/2019 11:26:23 have match string TTT
+01/05/2019 11:26:23 add non-match interval as have alts [3,3]
+01/05/2019 11:26:23 add match interval to complete step [4,6]
+01/05/2019 11:26:23 have match string TTT
+01/05/2019 11:26:23 add non-match interval as have alts [7,7]
+01/05/2019 11:26:23 add match interval to complete step [8,10]
+01/05/2019 11:26:23 have match string TTT
+01/05/2019 11:26:23 add non-match interval as have alts [11,11]
+01/05/2019 11:26:23 add match interval to complete step [12,14]
+01/05/2019 11:26:23 have match string TTT
+01/05/2019 11:26:23 add non-match interval as have alts [15,15]
+01/05/2019 11:26:23 add match interval to complete step [16,18]
+01/05/2019 11:26:23 at end have match string TTT
+01/05/2019 11:26:23 add non-match interval at end as have alts [19,19]
+01/05/2019 11:26:23 add match interval at end [20,22]
+01/05/2019 11:26:23 Non match intervals: [[3, 3], [7, 7], [11, 11], [15, 15], [19, 19]]
+01/05/2019 11:26:23 Have reached max nesting level or have a small variant site, so add all variant sequences in interval.
+01/05/2019 11:26:23 Variant seqs found: ['A', 'C', 'G']
+01/05/2019 11:26:23 Which is equivalent to: ['G', 'C', 'A']
+01/05/2019 11:26:23 Have reached max nesting level or have a small variant site, so add all variant sequences in interval.
+01/05/2019 11:26:23 Variant seqs found: ['C', 'A', 'G']
+01/05/2019 11:26:23 Which is equivalent to: ['G', 'C', 'A']
+01/05/2019 11:26:23 Have reached max nesting level or have a small variant site, so add all variant sequences in interval.
+01/05/2019 11:26:23 Variant seqs found: ['G', 'C', 'A']
+01/05/2019 11:26:23 Which is equivalent to: ['G', 'C', 'A']
+01/05/2019 11:26:23 Have reached max nesting level or have a small variant site, so add all variant sequences in interval.
+01/05/2019 11:26:23 Variant seqs found: ['A', 'C', 'G']
+01/05/2019 11:26:23 Which is equivalent to: ['G', 'C', 'A']
+01/05/2019 11:26:23 Have reached max nesting level or have a small variant site, so add all variant sequences in interval.
+01/05/2019 11:26:23 Variant seqs found: ['C', 'G', 'A']
+01/05/2019 11:26:23 Which is equivalent to: ['G', 'C', 'A']
+01/05/2019 11:26:23 Write PRG file to test/nested.fa.max_nest10.min_match3.prg
+01/05/2019 11:26:23 self.subAlignedSeqs.keys(): [15]
+01/05/2019 11:26:23 self.subAlignedSeqs[self.subAlignedSeqs.keys()[0]]: [<__main__.AlignedSeq object at 0x113df5a20>, <__main__.AlignedSeq object at 0x113df59b0>]
+01/05/2019 11:26:23 interval start: 15
+01/05/2019 11:26:23 type of subAlignedSeqs object in list: <class '__main__.AlignedSeq'>
+01/05/2019 11:26:23 self.subAlignedSeqs == {} at nesting level 2 for interval [15, 37]
+01/05/2019 11:26:23 found the max of [2] is 2
+01/05/2019 11:26:23 recur max level nesting returned: 2, which has type <class 'int'>
+01/05/2019 11:26:23 type of subAlignedSeqs object in list: <class '__main__.AlignedSeq'>
+01/05/2019 11:26:23 self.subAlignedSeqs == {} at nesting level 2 for interval [15, 37]
+01/05/2019 11:26:23 found the max of [2] is 2
+01/05/2019 11:26:23 recur max level nesting returned: 2, which has type <class 'int'>
+01/05/2019 11:26:23 found the max of [2, 2] is 2
+01/05/2019 11:26:23 Max_nesting_reached	2
+01/05/2019 11:26:23 Write GFA file to test/nested.fa.max_nest10.min_match3.gfa
+01/05/2019 11:26:23 gfa_site: 5
+01/05/2019 11:26:23 prgs: ['AAAAAAAAAAAAAAA', 'GGGG 6 TTT 7 G 8 C 8 A 7 TTT 9 G 10 C 10 A 9 TTT 11 G 12 C 12 A 11 TTT 13 G 14 C 14 A 13 TTT 15 G 16 C 16 A 15 TTT', 'CGTGCGTGCGTGCGTGCGTGCGTG']
+01/05/2019 11:26:23 vars: ['GGGG', 'TTT 7 G 8 C 8 A 7 TTT 9 G 10 C 10 A 9 TTT 11 G 12 C 12 A 11 TTT 13 G 14 C 14 A 13 TTT 15 G 16 C 16 A 15 TTT']
+01/05/2019 11:26:23 gfa_site: 7
+01/05/2019 11:26:23 gfa_site: 7
+01/05/2019 11:26:23 prgs: ['TTT', 'G 8 C 8 A', 'TTT 9 G 10 C 10 A 9 TTT 11 G 12 C 12 A 11 TTT 13 G 14 C 14 A 13 TTT 15 G 16 C 16 A 15 TTT']
+01/05/2019 11:26:23 vars: ['G', 'C', 'A']
+01/05/2019 11:26:23 gfa_site: 9
+01/05/2019 11:26:23 gfa_site: 9
+01/05/2019 11:26:23 prgs: ['TTT', 'G 10 C 10 A', 'TTT 11 G 12 C 12 A 11 TTT 13 G 14 C 14 A 13 TTT 15 G 16 C 16 A 15 TTT']
+01/05/2019 11:26:23 vars: ['G', 'C', 'A']
+01/05/2019 11:26:23 gfa_site: 11
+01/05/2019 11:26:23 gfa_site: 11
+01/05/2019 11:26:23 prgs: ['TTT', 'G 12 C 12 A', 'TTT 13 G 14 C 14 A 13 TTT 15 G 16 C 16 A 15 TTT']
+01/05/2019 11:26:23 vars: ['G', 'C', 'A']
+01/05/2019 11:26:23 gfa_site: 13
+01/05/2019 11:26:23 gfa_site: 13
+01/05/2019 11:26:23 prgs: ['TTT', 'G 14 C 14 A', 'TTT 15 G 16 C 16 A 15 TTT']
+01/05/2019 11:26:23 vars: ['G', 'C', 'A']
+01/05/2019 11:26:23 gfa_site: 15
+01/05/2019 11:26:23 gfa_site: 15
+01/05/2019 11:26:23 prgs: ['TTT', 'G 16 C 16 A', 'TTT']
+01/05/2019 11:26:23 vars: ['G', 'C', 'A']
+01/05/2019 11:26:23 gfa_site: 17
+01/05/2019 11:26:23 self.subAlignedSeqs.keys(): [15]
+01/05/2019 11:26:23 self.subAlignedSeqs[self.subAlignedSeqs.keys()[0]]: [<__main__.AlignedSeq object at 0x113df5a20>, <__main__.AlignedSeq object at 0x113df59b0>]
+01/05/2019 11:26:23 interval start: 15
+01/05/2019 11:26:23 type of subAlignedSeqs object in list: <class '__main__.AlignedSeq'>
+01/05/2019 11:26:23 self.subAlignedSeqs == {} at nesting level 2 for interval [15, 37]
+01/05/2019 11:26:23 found the max of [2] is 2
+01/05/2019 11:26:23 recur max level nesting returned: 2, which has type <class 'int'>
+01/05/2019 11:26:23 type of subAlignedSeqs object in list: <class '__main__.AlignedSeq'>
+01/05/2019 11:26:23 self.subAlignedSeqs == {} at nesting level 2 for interval [15, 37]
+01/05/2019 11:26:23 found the max of [2] is 2
+01/05/2019 11:26:23 recur max level nesting returned: 2, which has type <class 'int'>
+01/05/2019 11:26:23 found the max of [2, 2] is 2
