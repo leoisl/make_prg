@@ -5,13 +5,7 @@
 #ifndef MAKE_PRG_UTILS_H
 #define MAKE_PRG_UTILS_H
 
-
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <cstdio>
-
+#include "includes.h"
 
 //utility functions (auto explanatory)
 class Utils {

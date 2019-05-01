@@ -2,11 +2,18 @@
 // Created by Leandro Ishi Soares de Lima on 22/02/2019.
 //
 
+#include "includes.h"
 #include "BuildPRG.h"
 
 int main(void) {
+  logging::core::get()->set_filter
+  (
+      logging::trivial::severity >= logging::trivial::debug
+  );
+
   //same tests from test_make_prg.py
-  std::vector <std::string> files = {"../test/match.fa",
+  std::vector <std::string> files = {"../test/nested.fa",
+                                     "../test/match.fa",
                                      "../test/nonmatch.fa",
                                      "../test/match.nonmatch.fa",
                                      "../test/nonmatch.match.fa",
@@ -18,7 +25,8 @@ int main(void) {
                                      "../test/contains_RYKMSW.fa",
                                      "../test/contains_n_and_RYKMSW.fa",
                                      "../test/contains_n_and_RYKMSW_no_variants.fa"};
-  std::vector <std::string> answers = {"ACGTGTTTTGTAACTGTGCCACACTCTCGAGACTGCATATGTGTC",
+  std::vector <std::string> answers = {"TODO", //TODO
+  "ACGTGTTTTGTAACTGTGCCACACTCTCGAGACTGCATATGTGTC",
                                        " 5 AAACGTGGTT 6 CCCCCCCCCC 5 ",
                                        "AAACG 5 TGGTT 6 CCCCC 5 ",
                                        " 5 AAACGT 6 CCCCCC 5 GGTT",
