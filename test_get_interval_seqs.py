@@ -9,7 +9,7 @@ def test_get_interval_seqs(inputFile):
     print()
 
 
-for i in range(5):
+for i in range(6):
     try:
         test_get_interval_seqs(f"test/get_interval_seqs_test{i}.fa")
     except:

@@ -29,7 +29,7 @@ def get_interval_seqs(interval_alignment):
     for s in list(remove_duplicates([str(record.seq).replace('-', '').upper() for record in interval_alignment])): #get all alignments, remove '-', upper(), and remove alignment duplicates (alternative: transforming this list in set() to remove duplicates)
         if contains_only(s, allowed): #check if we have only the allowed chars
             new_seqs = [s]
-            for letter in iupac.keys():
+            for letter in iupac.keys(): #expands iupac into all possible strings (see slacks to remove any doubts on this)
                 letter_seqs = []
                 for t in new_seqs:
                     if letter in t:
