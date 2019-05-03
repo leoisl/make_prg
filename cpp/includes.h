@@ -12,6 +12,8 @@
 #include <cstdint>
 #include <fstream>
 #include <cstdio>
+#include <map>
+#include <utility>
 
 //boost libraries includes
 #include <boost/log/core.hpp>

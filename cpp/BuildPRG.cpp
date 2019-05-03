@@ -18,13 +18,13 @@ void BuildPRG::readMSAFromFastaFile(const std::string &filepath) {
 }
 
 VertexDescriptor BuildPRG::createVertex(const SubAlignment &subAlignment, const IntervalType &intervalType ) {
-  VertexDescriptor parentVertexDescriptor = add_vertex(graph);
-  graph[parentVertexDescriptor].subAlignment = subAlignment; //TODO: use move semantics here
-  graph[parentVertexDescriptor].intervalType = NONMATCH;
+  VertexDescriptor vertexDescriptor = add_vertex(graph);
+  graph[vertexDescriptor].subAlignment = subAlignment; //TODO: use move semantics here
+  graph[vertexDescriptor].intervalType = NONMATCH;
 
-  BOOST_LOG_TRIVIAL(debug) << "Created vertex: " << graph[parentVertexDescriptor];
+  BOOST_LOG_TRIVIAL(debug) << "Created vertex: " << graph[vertexDescriptor];
 
-  return parentVertexDescriptor;
+  return vertexDescriptor;
 }
 
 void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t parentVertexId) {

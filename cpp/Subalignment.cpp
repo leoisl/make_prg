@@ -41,14 +41,15 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
   uint32_t matchStart = 0;
   uint32_t nonMatchStart = 0;
 
-  int nbOfNonSpaceBases = std::count_if(consensus.begin(), consensus.end(),
-                                        [](char c){ return c!="-"});
+  int nbOfNonStarBases = std::count_if(consensusString.begin(), consensusString.end(),
+                                        [](char c){ return c != '*'; });
 
 
-  if (nbOfNonSpaceBases < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
+  if (nbOfNonStarBases < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
     /* From Rachel:
      * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
      */
+        std::vector<std::string> representativeSequences = getRepresentativeSequences();
 
     /**
             if '*' in self.consensus:
@@ -65,27 +66,29 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
                 logging.debug("add short match whole interval [%d,%d]" % (0, self.length - 1))
 
      */
-    if (consensusString.find('*') != string::npos) { //if '*' in self.consensus:
-      
+    if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus:
+
     }
+  }
+  else {
+      for (size_t i=0; i<consensusString.size(); ++i) {
+          if (consensusString[i]!='*') {
+              size_t j;
+              for (j=i+1; j<consensusString.size() && consensusString[j]!='*'; ++j);
+              if (j-i>=k){
+                  //new match interval
+                  Interval interval(i+begin, j+begin, MATCH);
+                  intervals.push_back(interval);
+              }else {
+                  //too small non-match interval
+                  Interval interval(i+begin, j+begin, NONMATCH);
+                  intervals.push_back(interval);
+              }
+              i=j-1;
+          }
+      }
   }
 
-  for (size_t i=0; i<consensusString.size(); ++i) {
-    if (consensusString[i]!='*') {
-      size_t j;
-      for (j=i+1; j<consensusString.size() && consensusString[j]!='*'; ++j);
-      if (j-i>=k){
-        //new match interval
-        Interval interval(i+begin, j+begin, MATCH);
-        intervals.push_back(interval);
-      }else {
-        //too small non-match interval
-        Interval interval(i+begin, j+begin, NONMATCH);
-        intervals.push_back(interval);
-      }
-      i=j-1;
-    }
-  }
   return intervals;
 
 
@@ -186,4 +189,60 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
 
         return match_intervals, non_match_intervals
 */
+}
+
+
+std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
+    /**
+     * 1/ Removes "-" from all alignments
+     * 2/ Disregards sequences with forbidden chars (allowed are ['A','C','G','T','R','Y','K','M','S','W']). Note: 'N' is not allowed
+     * 3/ Remove all duplicates
+     * 4/ Expands all IUPAC chars
+     */
+
+/*
+ *     allowed = ['A','C','G','T','R','Y','K','M','S','W']
+    iupac = {'R': ['G', 'A'], 'Y': ['T', 'C'], 'K': ['G', 'T'], 'M': ['A', 'C'], 'S': ['G', 'C'], 'W': ['A', 'T']}
+    seqs = []
+    for s in list(remove_duplicates([str(record.seq).replace('-', '').upper() for record in interval_alignment])): #get all alignments, remove '-', upper(), and remove alignment duplicates (alternative: transforming this list in set() to remove duplicates)
+        if contains_only(s, allowed): #check if we have only the allowed chars
+            new_seqs = [s]
+            for letter in iupac.keys(): #expands iupac into all possible strings (see slacks to remove any doubts on this)
+                letter_seqs = []
+                for t in new_seqs:
+                    if letter in t:
+                        letter_seqs.append(t.replace(letter, iupac[letter][0])) #so we first replace all Rs by Gs
+                        letter_seqs.append(t.replace(letter, iupac[letter][1])) #and then by As, but shouldn't we do all 2^|R| combinations? #TODO: not sure if it is a bug or not, check this with a counter-example
+                    else:
+                        letter_seqs.append(t)
+                new_seqs = letter_seqs
+            seqs.extend(new_seqs)
+    ret_list = list(set(seqs))
+    if len(ret_list) == 0: #we enter here if all seqs contain at least one N
+        print("Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense")
+        assert len(ret_list) > 0
+    return list(set(seqs))
+
+ */
+
+    static const std::vector<char> allowedBases = {'A','C','G','T','R','Y','K','M','S','W'}; //static so that we don't initialize this over and over again
+    static const std::map<char, std::pair<char,char>> translations =    {{'R', {'G', 'A'}},
+                                                                        {'Y', {'T', 'C'}},
+                                                                        {'K', {'G', 'T'}},
+                                                                        {'M', {'A', 'C'}},
+                                                                        {'S', {'G', 'C'}},
+                                                                        {'W', {'A', 'T'}}};
+
+}
+
+
+std::vector<std::string> SubAlignment::getSequences() const {
+    std::vector<std::string> sequences;
+    sequences.reserve(sequencesNumbers.size());
+
+    //get the sequences
+    for (uint32_t sequenceNumber : sequencesNumbers)
+        sequences.push_back(MSA->at(sequenceNumber).substr(begin, end-begin));
+
+    return sequences;
 }

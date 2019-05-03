@@ -112,6 +112,20 @@ public:
       os << "end: " << subAlignment.end << std::endl;
       return os;
     }
+
+    /**
+     * Given this subalignment, return the sequences in this alignment AS THEY ARE
+     * Do not process anything, just get the sequences and return
+     * @return vector with the alignments (strings)
+     */
+    std::vector<std::string> getSequences() const;
+
+    /**
+     * Given this subalignment, return the sequences representing this alignment
+     * Deals with N, non-ACGT bases, remove duplicates, etc...
+     * @return vector of the representative strings
+     */
+    std::vector<std::string> getRepresentativeSequences() const;
 };
 
 #endif //MAKE_PRG_SUBALIGNMENT_H
