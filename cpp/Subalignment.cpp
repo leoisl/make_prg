@@ -49,7 +49,7 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
     /* From Rachel:
      * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
      */
-        std::vector<std::string> representativeSequences = getRepresentativeSequences();
+        std::set<std::string> representativeSequences = getRepresentativeSequences();
 
     /**
             if '*' in self.consensus:
@@ -192,7 +192,45 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
 }
 
 
-std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
+void SubAlignment::expandRYKMSW(const std::string &seq, std::set<std::string> &representativeSeqs) const {
+    static const std::map<char, std::pair<char,char>> translations =    {{'R', {'G', 'A'}},
+                                                                         {'Y', {'T', 'C'}},
+                                                                         {'K', {'G', 'T'}},
+                                                                         {'M', {'A', 'C'}},
+                                                                         {'S', {'G', 'C'}},
+                                                                         {'W', {'A', 'T'}}};
+
+    //get the positions of the bases that are RYKMSW
+    std::vector<size_t> posRYKMSW;
+    for (size_t pos=0; pos < seq.size(); ++pos) {
+        char c = seq[pos];
+        if (translations.find(c) != translations.end()) //c is RYKMSW
+            posRYKMSW.push_back(pos);
+    }
+
+    //generate a representative seq where the first option is always chosen
+    std::string baseRepresentativeSeq(seq);
+    for (char &c : baseRepresentativeSeq) {
+        if (translations.find(c) != translations.end()) //c is RYKMSW
+            c = translations.at(c).first;
+    }
+
+    //generate all subsets from posRYKMSW
+    //bases on the subset are switched to the second option
+    for (auto&& subset : iter::powerset(posRYKMSW)) {
+        //switch
+        std::string newSeq(baseRepresentativeSeq);
+        for (auto&& pos : subset) {
+            newSeq[pos] = translations.at(seq[pos]).second; //seq contains the original sequence, with not replacements
+        }
+
+        //save newSeq
+        representativeSeqs.insert(newSeq);
+    }
+}
+
+
+std::set<std::string> SubAlignment::getRepresentativeSequences() const {
     /**
      * 1/ Removes "-" from all alignments
      * 2/ Disregards sequences with forbidden chars (allowed are ['A','C','G','T','R','Y','K','M','S','W']). Note: 'N' is not allowed
@@ -201,23 +239,6 @@ std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
      */
 
 /*
- *     allowed = ['A','C','G','T','R','Y','K','M','S','W']
-    iupac = {'R': ['G', 'A'], 'Y': ['T', 'C'], 'K': ['G', 'T'], 'M': ['A', 'C'], 'S': ['G', 'C'], 'W': ['A', 'T']}
-    seqs = []
-    for s in list(remove_duplicates([str(record.seq).replace('-', '').upper() for record in interval_alignment])): #get all alignments, remove '-', upper(), and remove alignment duplicates (alternative: transforming this list in set() to remove duplicates)
-        if contains_only(s, allowed): #check if we have only the allowed chars
-            new_seqs = [s]
-            for letter in iupac.keys(): #expands iupac into all possible strings (see slacks to remove any doubts on this)
-                letter_seqs = []
-                for t in new_seqs:
-                    if letter in t:
-                        letter_seqs.append(t.replace(letter, iupac[letter][0])) #so we first replace all Rs by Gs
-                        letter_seqs.append(t.replace(letter, iupac[letter][1])) #and then by As, but shouldn't we do all 2^|R| combinations? #TODO: not sure if it is a bug or not, check this with a counter-example
-                    else:
-                        letter_seqs.append(t)
-                new_seqs = letter_seqs
-            seqs.extend(new_seqs)
-    ret_list = list(set(seqs))
     if len(ret_list) == 0: #we enter here if all seqs contain at least one N
         print("Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense")
         assert len(ret_list) > 0
@@ -226,13 +247,48 @@ std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
  */
 
     static const std::vector<char> allowedBases = {'A','C','G','T','R','Y','K','M','S','W'}; //static so that we don't initialize this over and over again
-    static const std::map<char, std::pair<char,char>> translations =    {{'R', {'G', 'A'}},
-                                                                        {'Y', {'T', 'C'}},
-                                                                        {'K', {'G', 'T'}},
-                                                                        {'M', {'A', 'C'}},
-                                                                        {'S', {'G', 'C'}},
-                                                                        {'W', {'A', 'T'}}};
 
+    //get the sequences
+    std::vector<std::string> seqs = getSequences();
+
+    //filter out seqs with no allowed bases
+    {
+        //TODO: use memory better here?
+        std::vector<std::string> allowedSeqs;
+        allowedSeqs.reserve(seqs.size());
+        for (const std::string &seq : seqs) {
+            if (std::all_of(seq.begin(), seq.end(),
+                    //unary predicator that checks if c is an allowed base
+                    [](char c) {
+                        return std::find(allowedBases.begin(), allowedBases.end(), c) != allowedBases.end();
+                    })) {
+                allowedSeqs.push_back(seq);
+            }else{
+                BOOST_LOG_TRIVIAL(warning) << "Disconsidering the following sequence in SubAlignment::getRepresentativeSequences() due to having non-allowed base:" << std::endl << seq;
+            }
+        }
+
+        //move this vector to seqs
+        seqs = std::move(allowedSeqs);
+    }
+
+    //remove all spaces from all seqs
+    for (std::string& seq : seqs)
+        boost::erase_all(seq, "-");
+
+    //remove all duplicates now
+    auto it = std::unique(seqs.begin(), seqs.end());
+    seqs.resize(std::distance(seqs.begin(),it));
+
+    //expands RYKMSW and saves all new strings to representativeSeqs
+    std::set<std::string> representativeSeqs;
+    for (const std::string &seq : seqs)
+        expandRYKMSW(seq, representativeSeqs);
+
+    //final check
+    BOOST_ASSERT_MSG(representativeSeqs.size() > 0, "Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense"); //keeping Rachel's nice error message
+
+    return representativeSeqs;
 }
 
 

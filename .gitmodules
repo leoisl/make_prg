@@ -1,3 +1,6 @@
 [submodule "cgranges"]
 	path = cgranges
 	url = https://github.com/lh3/cgranges
+[submodule "cppitertools"]
+	path = cppitertools
+	url = https://github.com/ryanhaining/cppitertools

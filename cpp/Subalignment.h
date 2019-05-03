@@ -52,6 +52,9 @@ private:
     //TODO: replicate from python code
     std::string buildConsensusString() const;
 
+    //expand RYKMSW on seq, saving all to representativeSeqs
+    void expandRYKMSW(const std::string &seq, std::set<std::string> &representativeSeqs) const;
+
 public:
     //Main ctors:
     SubAlignment (uint32_t sequenceNumberLower, uint32_t sequenceNumberUpper, uint32_t begin, uint32_t end, const std::vector<std::string> *MSA) :
@@ -125,7 +128,7 @@ public:
      * Deals with N, non-ACGT bases, remove duplicates, etc...
      * @return vector of the representative strings
      */
-    std::vector<std::string> getRepresentativeSequences() const;
+    std::set<std::string> getRepresentativeSequences() const;
 };
 
 #endif //MAKE_PRG_SUBALIGNMENT_H

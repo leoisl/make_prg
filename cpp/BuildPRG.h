@@ -35,6 +35,7 @@ private:
 
 public:
     BuildPRG(const std::string &filepath, uint32_t k=3, std::string sep=" ") : MSA{}, k{k}, graph{}, sep{sep} {
+      //TODO: THIS IS REALLY BAD AND SHOULD BE OPTIMIZED
       readMSAFromFastaFile(filepath);
       buildGraph();
     }

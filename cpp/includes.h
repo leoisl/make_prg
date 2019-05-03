@@ -14,6 +14,9 @@
 #include <cstdio>
 #include <map>
 #include <utility>
+#include <cctype>
+#include <algorithm>
+
 
 //boost libraries includes
 #include <boost/log/core.hpp>
@@ -22,6 +25,11 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/graph_traits.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/assert.hpp>
+
+//other libraries includes
+#include <cppitertools/powerset.hpp>
 
 //renaming namespaces
 namespace logging = boost::log;

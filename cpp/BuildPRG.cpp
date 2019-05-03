@@ -14,6 +14,12 @@ void BuildPRG::readMSAFromFastaFile(const std::string &filepath) {
       MSA.push_back(line);
   }
   BOOST_LOG_TRIVIAL(info) << "Done!";
+
+
+  //lets just use uppercase bases, to simplify downstream process
+  for (std::string &line : lines)
+      boost::to_upper(line);
+
   MSA_NbColumns = MSA[0].size();
 }
 
