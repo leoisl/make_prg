@@ -28,10 +28,10 @@ private:
     //Common regions >= k compose the node of the graph
     //Arcs between the nodes are the sequences between these common regions
     inline void buildGraph() {
-      recursivelyBuildGraph(SubAlignment(0, MSA.size(), 0, MSA_NbColumns, &MSA), NULL_VERTEX_ID);
+      recursivelyBuildGraph(SubAlignment(0, MSA.size(), Interval(0, MSA_NbColumns), &MSA), NULL_VERTEX_ID);
     }
 
-    VertexDescriptor createVertex(const SubAlignment &subAlignment, const IntervalType &intervalType);
+    VertexDescriptor createVertex(const SubAlignment &subAlignment);
 
 public:
     BuildPRG(const std::string &filepath, uint32_t k=3, std::string sep=" ") : MSA{}, k{k}, graph{}, sep{sep} {

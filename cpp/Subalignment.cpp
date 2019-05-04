@@ -9,87 +9,95 @@
 //TODO: update this !
 //TODO: replicate from python code
 std::string SubAlignment::buildConsensusString() const {
-  std::string consensusString;
-  for (size_t j=begin; j<end; ++j) {
-    char consensusBase=(*MSA)[sequencesNumbers[0]][j];
-    for (size_t i=1; i<sequencesNumbers.size(); ++i) {
-      //check
-      if (consensusBase!=(*MSA)[sequencesNumbers[i]][j]) { //inconsistency, we are done
-        consensusBase = '*';
-        break; //go to next column
-      }
+    std::string consensusString;
+    for (size_t j = begin; j < end; ++j) {
+        char consensusBase = (*MSA)[sequencesNumbers[0]][j];
+        for (size_t i = 1; i < sequencesNumbers.size(); ++i) {
+            //check
+            if (consensusBase != (*MSA)[sequencesNumbers[i]][j]) { //inconsistency, we are done
+                consensusBase = '*';
+                break; //go to next column
+            }
+        }
+        consensusString += consensusBase;
     }
-    consensusString+=consensusBase;
-  }
-  return consensusString;
+    return consensusString;
 }
 
+/**
+ * Return the match and non-match intervals of this subalignment WRT the positions in the global MSA.
+ * Consensus sequences longer than k are match intervals and the rest as non-match intervals.
+ * @param k - the minimum length to consider a vertical stripe as a match interval
+ * @return vector of intervals
+ */
+std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) const {
+    std::vector<Interval> intervals; //represent match and non-match intervals
+    uint32_t matchCount = 0;
+    uint32_t matchStart = 0;
+    uint32_t nonMatchStart = 0;
 
-std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
-  /**
-   *  Returns a list of intervals in which we have
-   *  consensus sequences longer than k as match intervals and the rest as non-match intervals.
-   *  Mostly inspired by https://github.com/rmcolq/make_prg/blob/master/make_prg_from_msa.py#L117
-   * @param k : min_match_length
-   */
-  auto consensusString = buildConsensusString();
-
-  BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: consensusString = " << consensusString;
-
-  std::vector<Interval> intervals;
-  uint32_t matchCount = 0;
-  uint32_t matchStart = 0;
-  uint32_t nonMatchStart = 0;
-
-  int nbOfNonStarBases = std::count_if(consensusString.begin(), consensusString.end(),
-                                        [](char c){ return c != '*'; });
+    std::string consensusString = buildConsensusString();
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: consensusString = " << consensusString;
 
 
-  if (nbOfNonStarBases < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
-    /* From Rachel:
-     * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
-     */
-        std::set<std::string> representativeSequences = getRepresentativeSequences();
+    int nbOfNonSpaceBases = std::count_if(consensusString.begin(), consensusString.end(),
+                                         [](char c) { return c != '-'; });
 
-    /**
-            if '*' in self.consensus:
-                interval_alignment = self.alignment[:, 0:self.length]
-                interval_seqs = get_interval_seqs(interval_alignment)
-                if len(interval_seqs) > 1:
-                    logging.debug("add short non-match whole interval [%d,%d]" %(0,self.length - 1))
-                    non_match_intervals.append([0, self.length - 1])
+
+    if (nbOfNonSpaceBases < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
+        /* From Rachel:
+         * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
+         */
+        if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus:
+            std::set<std::string> representativeSequences = getRepresentativeSequences(); //interval_seqs = get_interval_seqs(interval_alignment)
+            if (representativeSequences.size() > 1) { //if len(interval_seqs) > 1:
+                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding short non-match whole interval: " << std::endl <<
+                                         *this;
+                intervals.push_back(Interval);
+            }
+
+        }
+
+
+
+        /**
+                if '*' in self.consensus:
+                    interval_alignment = self.alignment[:, 0:self.length]
+                    interval_seqs = get_interval_seqs(interval_alignment)
+                    if len(interval_seqs) > 1:
+                        logging.debug("add short non-match whole interval [%d,%d]" %(0,self.length - 1))
+                        non_match_intervals.append([0, self.length - 1])
+                    else:
+                        logging.debug("add short match whole interval [%d,%d]" %(0,self.length - 1))
+                        match_intervals.append([0, self.length - 1])
                 else:
-                    logging.debug("add short match whole interval [%d,%d]" %(0,self.length - 1))
                     match_intervals.append([0, self.length - 1])
-            else:
-                match_intervals.append([0, self.length - 1])
-                logging.debug("add short match whole interval [%d,%d]" % (0, self.length - 1))
+                    logging.debug("add short match whole interval [%d,%d]" % (0, self.length - 1))
 
-     */
-    if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus:
+         */
+        if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus:
 
+        }
+    } else {
+        for (size_t i = 0; i < consensusString.size(); ++i) {
+            if (consensusString[i] != '*') {
+                size_t j;
+                for (j = i + 1; j < consensusString.size() && consensusString[j] != '*'; ++j);
+                if (j - i >= k) {
+                    //new match interval
+                    Interval interval(i + begin, j + begin, MATCH);
+                    intervals.push_back(interval);
+                } else {
+                    //too small non-match interval
+                    Interval interval(i + begin, j + begin, NONMATCH);
+                    intervals.push_back(interval);
+                }
+                i = j - 1;
+            }
+        }
     }
-  }
-  else {
-      for (size_t i=0; i<consensusString.size(); ++i) {
-          if (consensusString[i]!='*') {
-              size_t j;
-              for (j=i+1; j<consensusString.size() && consensusString[j]!='*'; ++j);
-              if (j-i>=k){
-                  //new match interval
-                  Interval interval(i+begin, j+begin, MATCH);
-                  intervals.push_back(interval);
-              }else {
-                  //too small non-match interval
-                  Interval interval(i+begin, j+begin, NONMATCH);
-                  intervals.push_back(interval);
-              }
-              i=j-1;
-          }
-      }
-  }
 
-  return intervals;
+    return intervals;
 
 
 /*
@@ -193,16 +201,16 @@ std::vector<Interval> SubAlignment::getIntervals(uint32_t k) const {
 
 
 void SubAlignment::expandRYKMSW(const std::string &seq, std::set<std::string> &representativeSeqs) const {
-    static const std::map<char, std::pair<char,char>> translations =    {{'R', {'G', 'A'}},
-                                                                         {'Y', {'T', 'C'}},
-                                                                         {'K', {'G', 'T'}},
-                                                                         {'M', {'A', 'C'}},
-                                                                         {'S', {'G', 'C'}},
-                                                                         {'W', {'A', 'T'}}};
+    static const std::map<char, std::pair<char, char>> translations = {{'R', {'G', 'A'}},
+                                                                       {'Y', {'T', 'C'}},
+                                                                       {'K', {'G', 'T'}},
+                                                                       {'M', {'A', 'C'}},
+                                                                       {'S', {'G', 'C'}},
+                                                                       {'W', {'A', 'T'}}};
 
     //get the positions of the bases that are RYKMSW
     std::vector<size_t> posRYKMSW;
-    for (size_t pos=0; pos < seq.size(); ++pos) {
+    for (size_t pos = 0; pos < seq.size(); ++pos) {
         char c = seq[pos];
         if (translations.find(c) != translations.end()) //c is RYKMSW
             posRYKMSW.push_back(pos);
@@ -217,10 +225,10 @@ void SubAlignment::expandRYKMSW(const std::string &seq, std::set<std::string> &r
 
     //generate all subsets from posRYKMSW
     //bases on the subset are switched to the second option
-    for (auto&& subset : iter::powerset(posRYKMSW)) {
+    for (auto &&subset : iter::powerset(posRYKMSW)) {
         //switch
         std::string newSeq(baseRepresentativeSeq);
-        for (auto&& pos : subset) {
+        for (auto &&pos : subset) {
             newSeq[pos] = translations.at(seq[pos]).second; //seq contains the original sequence, with not replacements
         }
 
@@ -246,7 +254,8 @@ std::set<std::string> SubAlignment::getRepresentativeSequences() const {
 
  */
 
-    static const std::vector<char> allowedBases = {'A','C','G','T','R','Y','K','M','S','W'}; //static so that we don't initialize this over and over again
+    static const std::vector<char> allowedBases = {'A', 'C', 'G', 'T', 'R', 'Y', 'K', 'M', 'S',
+                                                   'W'}; //static so that we don't initialize this over and over again
 
     //get the sequences
     std::vector<std::string> seqs = getSequences();
@@ -259,12 +268,14 @@ std::set<std::string> SubAlignment::getRepresentativeSequences() const {
         for (const std::string &seq : seqs) {
             if (std::all_of(seq.begin(), seq.end(),
                     //unary predicator that checks if c is an allowed base
-                    [](char c) {
-                        return std::find(allowedBases.begin(), allowedBases.end(), c) != allowedBases.end();
-                    })) {
+                            [](char c) {
+                                return std::find(allowedBases.begin(), allowedBases.end(), c) != allowedBases.end();
+                            })) {
                 allowedSeqs.push_back(seq);
-            }else{
-                BOOST_LOG_TRIVIAL(warning) << "Disconsidering the following sequence in SubAlignment::getRepresentativeSequences() due to having non-allowed base:" << std::endl << seq;
+            } else {
+                BOOST_LOG_TRIVIAL(warning)
+                    << "Disconsidering the following sequence in SubAlignment::getRepresentativeSequences() due to having non-allowed base:"
+                    << std::endl << seq;
             }
         }
 
@@ -273,12 +284,12 @@ std::set<std::string> SubAlignment::getRepresentativeSequences() const {
     }
 
     //remove all spaces from all seqs
-    for (std::string& seq : seqs)
+    for (std::string &seq : seqs)
         boost::erase_all(seq, "-");
 
     //remove all duplicates now
     auto it = std::unique(seqs.begin(), seqs.end());
-    seqs.resize(std::distance(seqs.begin(),it));
+    seqs.resize(std::distance(seqs.begin(), it));
 
     //expands RYKMSW and saves all new strings to representativeSeqs
     std::set<std::string> representativeSeqs;
@@ -286,7 +297,8 @@ std::set<std::string> SubAlignment::getRepresentativeSequences() const {
         expandRYKMSW(seq, representativeSeqs);
 
     //final check
-    BOOST_ASSERT_MSG(representativeSeqs.size() > 0, "Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense"); //keeping Rachel's nice error message
+    BOOST_ASSERT_MSG(representativeSeqs.size() > 0,
+                     "Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense"); //keeping Rachel's nice error message
 
     return representativeSeqs;
 }
@@ -298,7 +310,7 @@ std::vector<std::string> SubAlignment::getSequences() const {
 
     //get the sequences
     for (uint32_t sequenceNumber : sequencesNumbers)
-        sequences.push_back(MSA->at(sequenceNumber).substr(begin, end-begin));
+        sequences.push_back(MSA->at(sequenceNumber).substr(begin, end - begin));
 
     return sequences;
 }

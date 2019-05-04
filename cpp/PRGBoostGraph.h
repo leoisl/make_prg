@@ -15,25 +15,14 @@ struct VertexInfo {
 public:
     //the subalignment represented by this vertex
     SubAlignment subAlignment;
-    IntervalType intervalType;
     VertexInfo() = default;
-    //TODO: remove this, boost always use default constructor
+
     /*
-    VertexInfo (const SubAlignment &subalignments, VertexType, vertexType) :
-        subalignments{subalignments}, vertexType{vertexType} {}
-    */
+     * TODO: do we need this?
+     */
     friend std::ostream& operator<<(std::ostream& os, const VertexInfo& vertexInfo) {
-        os << std::endl << "---------- VertexInfo [BEGIN] ---------" << std::endl;
-        switch (vertexInfo.intervalType) {
-            case NONMATCH:
-                os << "NONMATCH";
-                break;
-            case MATCH:
-                os << "MATCH";
-                break;
-        }
-        os << std::endl << vertexInfo.subAlignment;
-        os << "---------- VertexInfo [END] -----------" << std::endl;
+        os << std::endl << "---------- VertexInfo [BEGIN] ---------" << std::endl << vertexInfo.subAlignment <<
+                           "---------- VertexInfo [END] -----------";
         return os;
     }
 };
