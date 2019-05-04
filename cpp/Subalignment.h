@@ -10,20 +10,7 @@
 enum IntervalType {
     MATCH, NONMATCH, UNDEFINED
 };
-std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
-    switch (intervalType) {
-        case NONMATCH:
-            os << "NONMATCH";
-            break;
-        case MATCH:
-            os << "MATCH";
-            break;
-        case UNDEFINED:
-            os << "UNDEFINED";
-            break;
-    }
-    return os;
-}
+std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType);
 
 class Interval {
     /**
@@ -37,9 +24,6 @@ public:
     Interval() = default;
     Interval(uint32_t start, uint32_t end, IntervalType intervalType=UNDEFINED) :
             start{start}, end{end}, intervalType{intervalType} {}
-
-    //getters
-    in
 
     //streams
     friend std::ostream &operator<<(std::ostream &os, const Interval &interval) {
