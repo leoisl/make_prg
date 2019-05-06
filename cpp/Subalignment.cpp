@@ -21,23 +21,67 @@ std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
 }
 
 
-
-//builds the consensus string of this subalignment
-//TODO: update this !
-//TODO: replicate from python code
+/**
+ * Creates a consensus string from the aligment represented by this.
+ * Non AGCT symbols RYKMSW result in non-consensus
+ * N results in consensus at that position.
+ * - is taken into account and we can have a column full of -.
+ *
+ * @return
+ */
 std::string SubAlignment::buildConsensusString() const {
+    //Doubts:
+    //TODO: N is considered as any base, resulting in consensus, but RYKMSW directly results in non consensus. Why? Can't we expand RYKMSW? It makes sense since this is how 'N' is treated.
+    //TODO: what about the other IUPAC (B,D,H,V)??
+    //TODO: what to call in a column full of non-ACGT (e.g. several N and Rs? Random? non-consensus?)
+
+    //Idea:
+    //TODO: To remember: - can be in the consensus string, but never in the PRG
+    //TODO: Idea to define consensus string:
+    /*
+     * AAAAAAAR
+     * ANNNNNAR
+     * AAAAAAAR
+     * ARRRAACR
+     * ARRGAGCR
+     * AAA*A**?
+     * Consensus string should have only ACGT*
+     */
+    //TODO: unit tests needed here - and compare with the python code
+
+
     std::string consensusString;
     for (size_t j = interval.start; j < interval.end; ++j) {
-        char consensusBase = (*MSA)[sequencesNumbers[0]][j];
-        for (size_t i = 1; i < sequencesNumbers.size(); ++i) {
-            //check
-            if (consensusBase != (*MSA)[sequencesNumbers[i]][j]) { //inconsistency, we are done
-                consensusBase = '*';
-                break; //go to next column
+        //1. scans the contents of the column
+        std::unordered_set<char> uniqueBasesInThisColumn; //'N' is not considered here
+        bool containsRYKMSW=false;
+
+        for (uint32_t sequenceNumber : sequencesNumbers) {
+            char base = (*MSA)[sequenceNumber][j];
+            if (base != 'N')
+                uniqueBasesInThisColumn.insert(base);
+            if (base=='R' || base=='Y' || base=='K' || base=='M' || base=='S' || base=='W') {
+                containsRYKMSW = true;
+                break; //no reason to continue
             }
         }
+
+        //2. set the consensus base
+        char consensusBase;
+        if (containsRYKMSW) { //no consensus
+            consensusBase = '*';
+        }else if (uniqueBasesInThisColumn.size() == 0) { //all bases in this column are 'N', consensus is 'N'
+            consensusBase = 'N'; //TODO: change this? Should we really consensus to 'N' here?
+        }else if (uniqueBasesInThisColumn.size() == 1) { //here we have a consensus - everyone agrees on a unique base
+            consensusBase = *uniqueBasesInThisColumn.begin();
+        }else { //agreement is on 2+ bases, no consensus
+            consensusBase = '*';
+        }
+
+        //3. add the consensus base to the consensus string
         consensusString += consensusBase;
     }
+
     return consensusString;
 }
 
@@ -65,21 +109,26 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
         /* From Rachel:
          * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
          */
-        if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus:
-            std::set<std::string> representativeSequences = getRepresentativeSequences(); //interval_seqs = get_interval_seqs(interval_alignment)
+        if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus: - tell us if it is a non-match or not
+
+            //it is probably a non-match, but if we can expand to only one seq, then let's treat this as a match
+            //TODO: this should be encoded already in the consensus string - we should not care about this here...
+            std::unordered_set<std::string> representativeSequences = getRepresentativeSequences(); //interval_seqs = get_interval_seqs(interval_alignment)
             if (representativeSequences.size() > 1) { //if len(interval_seqs) > 1:
+                //non-match confirmed
                 Interval newIntervalToAdd(this->getInterval().start, this->getInterval().end, NONMATCH);
-                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding short NON-MATCH whole interval: " << std::endl << newIntervalToAdd;
+                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding SHORT NON-MATCH whole interval: " << std::endl << newIntervalToAdd;
                 intervals.push_back(newIntervalToAdd); //non_match_intervals.append([0, self.length - 1])
             }else {
+                //expanded to only one, this is a match
                 Interval newIntervalToAdd(this->getInterval().start, this->getInterval().end, MATCH);
-                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding short MATCH whole interval: " << std::endl << newIntervalToAdd;
+                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding SHORT MATCH whole interval: " << std::endl << newIntervalToAdd;
                 intervals.push_back(newIntervalToAdd); //match_intervals.append([0, self.length - 1])
             }
-        }else {
+        }else { //this is for sure a short match interval
             //TODO: these last two elses are identical, refactor?
             Interval newIntervalToAdd(this->getInterval().start, this->getInterval().end, MATCH);
-            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding short MATCH whole interval: " << std::endl << newIntervalToAdd;
+            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding SHORT MATCH whole interval: " << std::endl << newIntervalToAdd;
             intervals.push_back(newIntervalToAdd); //match_intervals.append([0, self.length - 1])
         }
     } else {
@@ -109,7 +158,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
 }
 
 
-void SubAlignment::expandRYKMSW(const std::string &seq, std::set<std::string> &representativeSeqs) const {
+void SubAlignment::expandRYKMSW(const std::string &seq, std::unordered_set<std::string> &representativeSeqs) const {
     static const std::map<char, std::pair<char, char>> translations = {{'R', {'G', 'A'}},
                                                                        {'Y', {'T', 'C'}},
                                                                        {'K', {'G', 'T'}},
@@ -147,27 +196,26 @@ void SubAlignment::expandRYKMSW(const std::string &seq, std::set<std::string> &r
 }
 
 
-std::set<std::string> SubAlignment::getRepresentativeSequences() const {
+std::unordered_set<std::string> SubAlignment::getRepresentativeSequences() const {
     /**
-     * 1/ Removes "-" from all alignments
-     * 2/ Disregards sequences with forbidden chars (allowed are ['A','C','G','T','R','Y','K','M','S','W']). Note: 'N' is not allowed
+     * 1/ Removes "-" from all alignments - TODO: this should be kept on the new version
+     * 2/ Disregards sequences with forbidden chars (allowed are ['A','C','G','T','R','Y','K','M','S','W']). Note: 'N' is not allowed - TODO: N should be allowed and other IUPAC also
      * 3/ Remove all duplicates
      * 4/ Expands all IUPAC chars
      */
-
-/*
-    if len(ret_list) == 0: #we enter here if all seqs contain at least one N
-        print("Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense")
-        assert len(ret_list) > 0
-    return list(set(seqs))
-
- */
-
+     //TODO: why not expand 'N' also - in the consensus, 'N' is allowed, here is forbidden (make us ignore the whole sequence in fact)
+     //TODO: 'N' is allowed in the consensus but disallowed here, this can be a source of bugs...
+     //TODO: cosensus string should represent a consensus of the representative sequences...
     static const std::vector<char> allowedBases = {'A', 'C', 'G', 'T', 'R', 'Y', 'K', 'M', 'S',
                                                    'W'}; //static so that we don't initialize this over and over again
 
     //get the sequences
     std::vector<std::string> seqs = getSequences();
+
+    //remove all spaces from all seqs
+    for (std::string &seq : seqs)
+        boost::erase_all(seq, "-");
+
 
     //filter out seqs with no allowed bases
     {
@@ -192,16 +240,12 @@ std::set<std::string> SubAlignment::getRepresentativeSequences() const {
         seqs = std::move(allowedSeqs);
     }
 
-    //remove all spaces from all seqs
-    for (std::string &seq : seqs)
-        boost::erase_all(seq, "-");
-
     //remove all duplicates now
     auto it = std::unique(seqs.begin(), seqs.end());
     seqs.resize(std::distance(seqs.begin(), it));
 
     //expands RYKMSW and saves all new strings to representativeSeqs
-    std::set<std::string> representativeSeqs;
+    std::unordered_set<std::string> representativeSeqs;
     for (const std::string &seq : seqs)
         expandRYKMSW(seq, representativeSeqs);
 

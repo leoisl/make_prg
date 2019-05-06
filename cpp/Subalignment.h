@@ -48,7 +48,7 @@ private:
     std::string buildConsensusString() const;
 
     //expand RYKMSW on seq, saving all to representativeSeqs
-    void expandRYKMSW(const std::string &seq, std::set<std::string> &representativeSeqs) const;
+    void expandRYKMSW(const std::string &seq, std::unordered_set<std::string> &representativeSeqs) const;
 
 public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -143,7 +143,7 @@ public:
      * Deals with N, non-ACGT bases, remove duplicates, etc...
      * @return vector of the representative strings
      */
-    std::set<std::string> getRepresentativeSequences() const;
+    std::unordered_set<std::string> getRepresentativeSequences() const;
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //MAIN METHODS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
