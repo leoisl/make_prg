@@ -84,20 +84,24 @@ std::string SubAlignment::buildConsensusString() const {
 std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) const {
     std::vector<Interval> intervals; //represent match and non-match intervals
 
-    //check if the interval is too short
-    if (interval.getLength() < k) {
-        //no reason to continue, let's stop here
-        Interval shortInterval {interval};
-        shortInterval.intervalType = IntervalType::TOO_SHORT;
-        intervals.push_back(shortInterval);
-        return intervals;
-    }
-
-    //the interval is big enough, divide into MATCH and NONMATCH
     //get consensus
     std::string consensusString = buildConsensusString();
     BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: consensusString = " << consensusString;
 
+    //check if the interval is too short
+    //if (interval.getLength() < k) { //at first I did like this, but Rachel's condition is below better
+    if (boost::erase_all_copy(consensusString, "-").size() < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
+        //no reason to continue, let's stop here
+        Interval shortInterval {interval};
+        shortInterval.intervalType = IntervalType::TOO_SHORT;
+        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: Found a TOO SHORT interval: " << shortInterval;
+
+        intervals.push_back(shortInterval);
+        return intervals;
+    }
+
+
+    //the interval is big enough, divide into MATCH and NONMATCH
     //1. get the basic match and non-match intervals with a finite state machine
     enum State {
         BEGIN, MATCH, NONMATCH
@@ -269,6 +273,44 @@ std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
 }
 
 
+/**
+     * Split this subalignment into several subaligments, where each is a cluster of similar sequences
+     * @return a vector of subalignments
+     */
+std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: clustering " << *this;
+
+    //get the aligments without - with their IDs
+    std::unordered_map<uint32_t, std::string> seqNb2seqWithNoSpace;
+    //get the sequences without space
+    for (uint32_t sequenceNumber : sequencesNumbers)
+        seqNb2seqWithNoSpace[sequenceNumber] = boost::erase_all_copy(MSA->at(sequenceNumber).substr(interval.start, interval.end - interval.start), "-");
+
+    //divide the sequences into two sets: tooShort (<k) and big (>=k)
+    //also, we will only work on unique sequences, remembering their original numbers
+    std::unordered_map<const std::string *, std::vector<uint32_t>> seqWithNoSpace2seqNbsTooShort, seqWithNoSpace2seqNbsBig;
+    for (const auto &[seqNb, seqWithNoSpace] : seqNb2seqWithNoSpace) {
+        if (seqWithNoSpace.size() < k)
+            seqWithNoSpace2seqNbsTooShort[&seqWithNoSpace].push_back(seqNb);
+        else
+            seqWithNoSpace2seqNbsBig[&seqWithNoSpace].push_back(seqNb);
+
+    }
+
+    //cluster seqWithNoSpace2seqNbsBig
+    /*
+    std::vector<std>
+
+    if (seqWithNoSpace2seqNbsBig.size()>1) {
+        kMeansCluster(seqWithNoSpace2seqNbsBig);
+    }else {
+
+    }
+     */
+    
+}
+
+
 std::vector<std::string> SubAlignment::getSequences() const {
     std::vector<std::string> sequences;
     sequences.reserve(sequencesNumbers.size());
@@ -279,3 +321,4 @@ std::vector<std::string> SubAlignment::getSequences() const {
 
     return sequences;
 }
+

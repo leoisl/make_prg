@@ -9,7 +9,7 @@
 #include "Utils.h"
 
 enum IntervalType {
-    UNCLASSIFIED, //those that do not correspond to any of the classifications below - correspond to subalignments to be broken into subalignments of the types below
+    UNPROCESSED, //those that do not correspond to any of the classifications below (not still processed) - correspond to subalignments to be broken into subalignments of the types below
     MATCH, // intervals with length >= k, which we manage to get a consensus string -> These should be printed and the result is the consensus string
     NONMATCH, //intervals with length >= k, that we did not manage to get a consensus string
     NONMATCH_MAX_NESTING_LEVEL, //nonmatch that we can't divide further -> These should be printed by getting the unique representative sequences
@@ -27,7 +27,7 @@ public:
 
     //ctors
     Interval() = default;
-    Interval(uint32_t start, uint32_t end, IntervalType intervalType=UNCLASSIFIED) :
+    Interval(uint32_t start, uint32_t end, IntervalType intervalType=UNPROCESSED) :
             start{start}, end{end}, intervalType{intervalType} {}
     Interval(const Interval &interval) = default;
 
@@ -147,6 +147,14 @@ public:
     * 2/ Remove all duplicates
     */
     std::vector<std::string> getRepresentativeSequences() const;
+
+
+
+    /**
+     * Split this subalignment into several subaligments, where each is a cluster of similar sequences
+     * @return a vector of subalignments
+     */
+    std::vector<SubAlignment> kMeansCluster(uint32_t k) const;
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //MAIN METHODS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
