@@ -8,8 +8,6 @@
 #include "includes.h"
 #include "Subalignment.h"
 
-#define NULL_VERTEX_ID UINT32_MAX
-
 //vertex properties
 struct VertexInfo {
 public:

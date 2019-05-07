@@ -30,17 +30,13 @@ VertexDescriptor BuildPRG::createVertex(const SubAlignment &subAlignment) {
   return vertexDescriptor;
 }
 
-void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t parentVertexId) {
+void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment) {
   BOOST_LOG_TRIVIAL(debug) << "@ BuildPRG::recursivelyBuildGraph: " << std::endl
                            << "subAlignment:" << std::endl
                            << subAlignment << std::endl;
 
   //create the vertex representing this subalignment
   VertexDescriptor parentVertexDescriptor = createVertex(subAlignment);
-
-  if (parentVertexId != NULL_VERTEX_ID) {
-    //TODO: build the edge from parent to this node
-  }
 
   //find the match/non-match regions and build the children of this node
   {

@@ -26,6 +26,8 @@ public:
     Interval(uint32_t start, uint32_t end, IntervalType intervalType=UNDEFINED) :
             start{start}, end{end}, intervalType{intervalType} {}
 
+    inline uint32_t getLength() const { return end-start; }
+
     //streams
     friend std::ostream &operator<<(std::ostream &os, const Interval &interval) {
         os << "(" << interval.start << ", " << interval.end << "]: " << interval.intervalType;
@@ -44,12 +46,7 @@ private:
 
 
     //builds the consensus string of this subalignment
-    //TODO: update this !
-    //TODO: replicate from python code
     std::string buildConsensusString() const;
-
-    //expand RYKMSW on seq, saving all to representativeSeqs
-    void expandRYKMSW(const std::string &seq, std::unordered_set<std::string> &representativeSeqs) const;
 
 public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +124,7 @@ public:
      * Return the match and non-match intervals of this subalignment WRT the positions in the global MSA.
      * Consensus sequences longer than k are match intervals and the rest as non-match intervals.
      * @param k - the minimum length to consider a vertical stripe as a match interval
-     * @return vector of intervals
+     * @return list of intervals
      */
     std::vector<Interval> getMatchAndNonMatchIntervals(uint32_t k) const;
 
@@ -140,11 +137,10 @@ public:
     std::vector<std::string> getSequences() const;
 
     /**
-     * Given this subalignment, return the sequences representing this alignment
-     * Deals with N, non-ACGT bases, remove duplicates, etc...
-     * @return vector of the representative strings
-     */
-    std::unordered_set<std::string> getRepresentativeSequences() const;
+    * 1/ Removes "-" from all alignments
+    * 2/ Remove all duplicates
+    */
+    std::vector<std::string> getRepresentativeSequences() const;
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //MAIN METHODS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

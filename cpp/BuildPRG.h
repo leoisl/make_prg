@@ -22,13 +22,13 @@ private:
     //read the MSA from a fasta file and put it in MSA
     void readMSAFromFastaFile(const std::string &filepath);
 
-    void recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t parentVertexId);
+    void recursivelyBuildGraph(const SubAlignment &subAlignment);
 
     //Build a graph representing this MSA
     //Common regions >= k compose the node of the graph
     //Arcs between the nodes are the sequences between these common regions
     inline void buildGraph() {
-      recursivelyBuildGraph(SubAlignment(0, MSA.size(), Interval(0, MSA_NbColumns), &MSA), NULL_VERTEX_ID);
+      recursivelyBuildGraph(SubAlignment(0, MSA.size(), Interval(0, MSA_NbColumns), &MSA));
     }
 
     VertexDescriptor createVertex(const SubAlignment &subAlignment);
