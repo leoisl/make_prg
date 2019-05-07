@@ -47,6 +47,9 @@ std::string SubAlignment::buildConsensusString() const {
      * AAA*A**?
      * Consensus string should have only ACGT*
      */
+
+    //TODO: we need both methods in fact (buildConsensusString() and getRepresentativeSequences())
+
     //TODO: unit tests needed here - and compare with the python code
 
 
