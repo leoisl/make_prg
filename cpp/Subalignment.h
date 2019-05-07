@@ -6,6 +6,7 @@
 #define MAKE_PRG_SUBALIGNMENT_H
 
 #include "includes.h"
+#include "Utils.h"
 
 enum IntervalType {
     MATCH, NONMATCH, UNDEFINED

@@ -23,63 +23,43 @@ std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
 
 /**
  * Creates a consensus string from the aligment represented by this.
- * Non AGCT symbols RYKMSW result in non-consensus
- * N results in consensus at that position.
+ * IUPAC bases results in consensus on that base if possible (see e.g. https://www.bioinformatics.org/sms/iupac.html)
  * - is taken into account and we can have a column full of -.
+ * If there is a column where the consensus could be more than one base, we choose it at random
  *
- * @return
+ * @return a consensus of the alignment
  */
 std::string SubAlignment::buildConsensusString() const {
-    //Doubts:
-    //TODO: N is considered as any base, resulting in consensus, but RYKMSW directly results in non consensus. Why? Can't we expand RYKMSW? It makes sense since this is how 'N' is treated.
-    //TODO: what about the other IUPAC (B,D,H,V)??
-    //TODO: what to call in a column full of non-ACGT (e.g. several N and Rs? Random? non-consensus?)
-
-    //Idea:
-    //TODO: To remember: - can be in the consensus string, but never in the PRG
-    //TODO: Idea to define consensus string:
-    /*
-     * AAAAAAAR
-     * ANNNNNAR
-     * AAAAAAAR
-     * ARRRAACR
-     * ARRGAGCR
-     * AAA*A**?
-     * Consensus string should have only ACGT*
-     */
-    //TODO: unit tests needed here - and compare with the python code
+    static const std::string consensusBases{"ACGT-"}; //which bases should we have in the final consensus?
 
 
+    //generate the consensus string based on the previous two data structures
     std::string consensusString;
     for (size_t j = interval.start; j < interval.end; ++j) {
-        //1. scans the contents of the column
-        std::unordered_set<char> uniqueBasesInThisColumn; //'N' is not considered here
-        bool containsRYKMSW=false;
-
-        for (uint32_t sequenceNumber : sequencesNumbers) {
-            char base = (*MSA)[sequenceNumber][j];
-            if (base != 'N')
-                uniqueBasesInThisColumn.insert(base);
-            if (base=='R' || base=='Y' || base=='K' || base=='M' || base=='S' || base=='W') {
-                containsRYKMSW = true;
-                break; //no reason to continue
+        //1. Checks which base can be accepted as consensus in this column
+        std::string acceptedBases;
+        for (char candidateBase : consensusBases) {
+            if (std::all_of(sequencesNumbers.begin(), sequencesNumbers.end(),
+                    [&j, &candidateBase, this](uint32_t sequenceNumber) {
+                        char MSABase = (*(this->MSA))[sequenceNumber][j];
+                        return Utils::accepts(MSABase, candidateBase);
+                    }
+            )) {
+                //everyone accepted candidate base, add it
+                acceptedBases+=candidateBase;
             }
         }
 
-        //2. set the consensus base
-        char consensusBase;
-        if (containsRYKMSW) { //no consensus
-            consensusBase = '*';
-        }else if (uniqueBasesInThisColumn.size() == 0) { //all bases in this column are 'N', consensus is 'N'
-            consensusBase = 'N'; //TODO: change this? Should we really consensus to 'N' here?
-        }else if (uniqueBasesInThisColumn.size() == 1) { //here we have a consensus - everyone agrees on a unique base
-            consensusBase = *uniqueBasesInThisColumn.begin();
-        }else { //agreement is on 2+ bases, no consensus
-            consensusBase = '*';
+        //2. chooses a random accepted base if there was a consensus
+        char acceptedBase = '*'; //assumes no consensus
+        if (acceptedBases.size() > 0) {
+            //we had a consensus, choose random base from the accepted ones
+            acceptedBase = acceptedBases[std::rand() % acceptedBases.size()];
         }
 
-        //3. add the consensus base to the consensus string
-        consensusString += consensusBase;
+
+        //3. add the accpted base to the consensus string
+        consensusString += acceptedBase;
     }
 
     return consensusString;
@@ -159,13 +139,6 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
 
 
 void SubAlignment::expandRYKMSW(const std::string &seq, std::unordered_set<std::string> &representativeSeqs) const {
-    static const std::map<char, std::pair<char, char>> translations = {{'R', {'G', 'A'}},
-                                                                       {'Y', {'T', 'C'}},
-                                                                       {'K', {'G', 'T'}},
-                                                                       {'M', {'A', 'C'}},
-                                                                       {'S', {'G', 'C'}},
-                                                                       {'W', {'A', 'T'}}};
-
     //get the positions of the bases that are RYKMSW
     std::vector<size_t> posRYKMSW;
     for (size_t pos = 0; pos < seq.size(); ++pos) {

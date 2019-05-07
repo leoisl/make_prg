@@ -43,6 +43,8 @@ public:
       return allReadFilesNames;
     }
 
+
+    static bool accepts(char MSABase, char candidateBase);
 };
 
 
