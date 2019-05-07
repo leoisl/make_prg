@@ -13,14 +13,17 @@ struct VertexInfo {
 public:
     //the subalignment represented by this vertex
     SubAlignment subAlignment;
+    uint32_t nestingLevel;
     VertexInfo() = default;
 
     /*
      * TODO: do we need this?
      */
     friend std::ostream& operator<<(std::ostream& os, const VertexInfo& vertexInfo) {
-        os << std::endl << "---------- VertexInfo [BEGIN] ---------" << std::endl << vertexInfo.subAlignment <<
-                           "---------- VertexInfo [END] -----------";
+        os << std::endl << "---------- VertexInfo [BEGIN] ---------" << std::endl
+                        << "Subalignment: " << std::endl << vertexInfo.subAlignment << std::endl
+                        << "Nesting level: " << vertexInfo.nestingLevel << std::endl
+                        <<   "---------- VertexInfo [END] -----------";
         return os;
     }
 };

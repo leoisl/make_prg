@@ -15,6 +15,7 @@ private:
     std::vector<std::string> MSA;
     uint32_t MSA_NbColumns;
     uint32_t k;
+    uint32_t maxNestingLevel;
     BoostGraph graph;
     std::string sep;
     std::string prg;
@@ -22,19 +23,20 @@ private:
     //read the MSA from a fasta file and put it in MSA
     void readMSAFromFastaFile(const std::string &filepath);
 
-    void recursivelyBuildGraph(const SubAlignment &subAlignment);
+    void recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t nestingLevel);
 
     //Build a graph representing this MSA
     //Common regions >= k compose the node of the graph
     //Arcs between the nodes are the sequences between these common regions
     inline void buildGraph() {
-      recursivelyBuildGraph(SubAlignment(0, MSA.size(), Interval(0, MSA_NbColumns), &MSA));
+      recursivelyBuildGraph(SubAlignment(0, MSA.size(), Interval(0, MSA_NbColumns), &MSA), 1);
     }
 
-    VertexDescriptor createVertex(const SubAlignment &subAlignment);
+    VertexDescriptor createVertex(const SubAlignment &subAlignment, uint32_t nestingLevel);
 
 public:
-    BuildPRG(const std::string &filepath, uint32_t k=3, std::string sep=" ") : MSA{}, k{k}, graph{}, sep{sep} {
+    BuildPRG(const std::string &filepath, uint32_t k=3, uint32_t maxNestingLevel=2, std::string sep=" ") :
+    MSA{}, k{k}, maxNestingLevel{maxNestingLevel}, graph{}, sep{sep} {
       //TODO: THIS IS REALLY BAD AND SHOULD BE OPTIMIZED
       readMSAFromFastaFile(filepath);
       buildGraph();

@@ -9,7 +9,11 @@
 #include "Utils.h"
 
 enum IntervalType {
-    MATCH, NONMATCH, UNDEFINED
+    UNCLASSIFIED, //those that do not correspond to any of the classifications below - correspond to subalignments to be broken into subalignments of the types below
+    MATCH, // intervals with length >= k, which we manage to get a consensus string -> These should be printed and the result is the consensus string
+    NONMATCH, //intervals with length >= k, that we did not manage to get a consensus string
+    NONMATCH_MAX_NESTING_LEVEL, //nonmatch that we can't divide further -> These should be printed by getting the unique representative sequences
+    TOO_SHORT //non-match or match, it does not matter, these are very short intervals -> These should be printed by getting the unique representative sequences
 };
 std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType);
 
@@ -23,8 +27,9 @@ public:
 
     //ctors
     Interval() = default;
-    Interval(uint32_t start, uint32_t end, IntervalType intervalType=UNDEFINED) :
+    Interval(uint32_t start, uint32_t end, IntervalType intervalType=UNCLASSIFIED) :
             start{start}, end{end}, intervalType{intervalType} {}
+    Interval(const Interval &interval) = default;
 
     inline uint32_t getLength() const { return end-start; }
 
@@ -100,6 +105,7 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     inline const std::vector<uint32_t>& getSequencesNumbers() const { return sequencesNumbers; }
     inline const Interval& getInterval() const { return interval; }
+    inline Interval& getInterval() { return interval; }
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //GETTERS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
