@@ -4,6 +4,7 @@
 
 #include "includes.h"
 #include "BuildPRG.h"
+#include <boost/mpl/for_each.hpp>
 
 int main(void) {
     //initialize logger

@@ -7,6 +7,7 @@
 
 #include "includes.h"
 #include "Utils.h"
+#include "BooMap.hpp"
 
 enum IntervalType {
     UNPROCESSED, //those that do not correspond to any of the classifications below (not still processed) - correspond to subalignments to be broken into subalignments of the types below
@@ -52,6 +53,9 @@ private:
 
     //builds the consensus string of this subalignment
     std::string buildConsensusString() const;
+
+    //TODO: document
+    void kMeansCluster(const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig, int k) const;
 
 public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -4,3 +4,6 @@
 [submodule "cppitertools"]
 	path = cppitertools
 	url = https://github.com/ryanhaining/cppitertools
+[submodule "gatb-core"]
+	path = gatb-core
+	url = https://github.com/GATB/gatb-core
