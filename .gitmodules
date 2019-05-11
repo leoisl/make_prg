@@ -7,3 +7,6 @@
 [submodule "gatb-core"]
 	path = gatb-core
 	url = https://github.com/GATB/gatb-core
+[submodule "BooM"]
+	path = BooM
+	url = https://github.com/leoisl/BooM
