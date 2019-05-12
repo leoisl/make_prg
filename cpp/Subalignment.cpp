@@ -4,17 +4,22 @@
 
 #include "Subalignment.h"
 
-
 std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
     switch (intervalType) {
-        case NONMATCH:
-            os << "NONMATCH";
+        case UNPROCESSED:
+            os << "UNPROCESSED";
             break;
         case MATCH:
             os << "MATCH";
             break;
-        case UNDEFINED:
-            os << "UNDEFINED";
+        case NONMATCH:
+            os << "NONMATCH";
+            break;
+        case NONMATCH_MAX_NESTING_LEVEL:
+            os << "NONMATCH_MAX_NESTING_LEVEL";
+            break;
+        case TOO_SHORT:
+            os << "TOO_SHORT";
             break;
     }
     return os;
@@ -23,66 +28,47 @@ std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
 
 /**
  * Creates a consensus string from the aligment represented by this.
- * Non AGCT symbols RYKMSW result in non-consensus
- * N results in consensus at that position.
+ * IUPAC bases results in consensus on that base if possible (see e.g. https://www.bioinformatics.org/sms/iupac.html)
  * - is taken into account and we can have a column full of -.
+ * If there is a column where the consensus could be more than one base, we choose it at random
  *
- * @return
+ * @return a consensus of the alignment
  */
 std::string SubAlignment::buildConsensusString() const {
-    //Doubts:
-    //TODO: N is considered as any base, resulting in consensus, but RYKMSW directly results in non consensus. Why? Can't we expand RYKMSW? It makes sense since this is how 'N' is treated.
-    //TODO: what about the other IUPAC (B,D,H,V)??
-    //TODO: what to call in a column full of non-ACGT (e.g. several N and Rs? Random? non-consensus?)
+    //TODO: issue warning on many non ACGT- bases?
+    static const std::string consensusBases{"ACGT-"}; //which bases should we have in the final consensus?
 
-    //Idea:
-    //TODO: To remember: - can be in the consensus string, but never in the PRG
-    //TODO: Idea to define consensus string:
-    /*
-     * AAAAAAAR
-     * ANNNNNAR
-     * AAAAAAAR
-     * ARRRAACR
-     * ARRGAGCR
-     * AAA*A**?
-     * Consensus string should have only ACGT*
-     */
-
-    //TODO: we need both methods in fact (buildConsensusString() and getRepresentativeSequences())
-
-    //TODO: unit tests needed here - and compare with the python code
-
-
+    //generate the consensus string
     std::string consensusString;
     for (size_t j = interval.start; j < interval.end; ++j) {
-        //1. scans the contents of the column
-        std::unordered_set<char> uniqueBasesInThisColumn; //'N' is not considered here
-        bool containsRYKMSW=false;
-
-        for (uint32_t sequenceNumber : sequencesNumbers) {
-            char base = (*MSA)[sequenceNumber][j];
-            if (base != 'N')
-                uniqueBasesInThisColumn.insert(base);
-            if (base=='R' || base=='Y' || base=='K' || base=='M' || base=='S' || base=='W') {
-                containsRYKMSW = true;
-                break; //no reason to continue
+        //1. Checks which base can be accepted as consensus in this column
+        std::string acceptedBases;
+        for (char candidateBase : consensusBases) {
+            if (std::all_of(sequencesNumbers.begin(), sequencesNumbers.end(),
+                    [&j, &candidateBase, this](uint32_t sequenceNumber) {
+                        char MSABase = (*(this->MSA))[sequenceNumber][j];
+                        try {
+                            return Utils::accepts(MSABase, candidateBase);
+                        }catch (const std::out_of_range &exception) {
+                            BOOST_LOG_TRIVIAL(fatal) << "Unknown base in MSA: " << MSABase;
+                            std::exit(1);
+                        }
+                    }
+            )) {
+                //everyone accepted the candidate base, add it
+                acceptedBases+=candidateBase;
             }
         }
 
-        //2. set the consensus base
-        char consensusBase;
-        if (containsRYKMSW) { //no consensus
-            consensusBase = '*';
-        }else if (uniqueBasesInThisColumn.size() == 0) { //all bases in this column are 'N', consensus is 'N'
-            consensusBase = 'N'; //TODO: change this? Should we really consensus to 'N' here?
-        }else if (uniqueBasesInThisColumn.size() == 1) { //here we have a consensus - everyone agrees on a unique base
-            consensusBase = *uniqueBasesInThisColumn.begin();
-        }else { //agreement is on 2+ bases, no consensus
-            consensusBase = '*';
+        //2. chooses a random accepted base if there was a consensus
+        char acceptedBase = '*'; //assumes no consensus
+        if (acceptedBases.size() > 0) {
+            //we had a consensus, choose random base from the accepted ones
+            acceptedBase = acceptedBases[std::rand() % acceptedBases.size()];
         }
 
-        //3. add the consensus base to the consensus string
-        consensusString += consensusBase;
+        //3. add the accpted base to the consensus string
+        consensusString += acceptedBase;
     }
 
     return consensusString;
@@ -92,126 +78,185 @@ std::string SubAlignment::buildConsensusString() const {
  * Return the match and non-match intervals of this subalignment WRT the positions in the global MSA.
  * Consensus sequences longer than k are match intervals and the rest as non-match intervals.
  * @param k - the minimum length to consider a vertical stripe as a match interval
- * @return vector of intervals
+ * @return list of intervals
  */
 std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) const {
     std::vector<Interval> intervals; //represent match and non-match intervals
-    uint32_t matchCount = 0;
-    uint32_t matchStart = 0;
-    uint32_t nonMatchStart = 0;
 
+    //get consensus
     std::string consensusString = buildConsensusString();
-    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: consensusString = " << consensusString;
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: consensusString = " << consensusString;
+
+    //check if the interval is too short
+    //if (interval.getLength() < k) { //at first I did like this, but Rachel's condition is below better
+    if (boost::erase_all_copy(consensusString, "-").size() < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
+        //no reason to continue, let's stop here
+        Interval shortInterval {interval};
+        shortInterval.intervalType = IntervalType::TOO_SHORT;
+        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: Found a TOO SHORT interval: " << shortInterval;
+
+        intervals.push_back(shortInterval);
+        return intervals;
+    }
 
 
-    int nbOfNonSpaceBases = std::count_if(consensusString.begin(), consensusString.end(),
-                                         [](char c) { return c != '-'; });
+    //the interval is big enough, divide into MATCH and NONMATCH
+    //1. get the basic match and non-match intervals with a finite state machine
+    enum State {
+        BEGIN, MATCH, NONMATCH
+    };
 
-
-    if (nbOfNonSpaceBases < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
-        /* From Rachel:
-         * It makes no sense to classify a fully consensus sequence as non-match just because it is too short.
-         */
-        if (consensusString.find('*') != std::string::npos) { //if '*' in self.consensus: - tell us if it is a non-match or not
-
-            //it is probably a non-match, but if we can expand to only one seq, then let's treat this as a match
-            //TODO: this should be encoded already in the consensus string - we should not care about this here...
-            std::unordered_set<std::string> representativeSequences = getRepresentativeSequences(); //interval_seqs = get_interval_seqs(interval_alignment)
-            if (representativeSequences.size() > 1) { //if len(interval_seqs) > 1:
-                //non-match confirmed
-                Interval newIntervalToAdd(this->getInterval().start, this->getInterval().end, NONMATCH);
-                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding SHORT NON-MATCH whole interval: " << std::endl << newIntervalToAdd;
-                intervals.push_back(newIntervalToAdd); //non_match_intervals.append([0, self.length - 1])
-            }else {
-                //expanded to only one, this is a match
-                Interval newIntervalToAdd(this->getInterval().start, this->getInterval().end, MATCH);
-                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding SHORT MATCH whole interval: " << std::endl << newIntervalToAdd;
-                intervals.push_back(newIntervalToAdd); //match_intervals.append([0, self.length - 1])
-            }
-        }else { //this is for sure a short match interval
-            //TODO: these last two elses are identical, refactor?
-            Interval newIntervalToAdd(this->getInterval().start, this->getInterval().end, MATCH);
-            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getIntervals: adding SHORT MATCH whole interval: " << std::endl << newIntervalToAdd;
-            intervals.push_back(newIntervalToAdd); //match_intervals.append([0, self.length - 1])
-        }
-    } else {
-        /*
-         * TODO: finish add the match and non-match intervals
-
-        for (size_t i = 0; i < consensusString.size(); ++i) {
-            if (consensusString[i] != '*') {
-                size_t j;
-                for (j = i + 1; j < consensusString.size() && consensusString[j] != '*'; ++j);
-                if (j - i >= k) {
-                    //new match interval
-                    Interval interval(i + begin, j + begin, MATCH);
-                    intervals.push_back(interval);
-                } else {
-                    //too small non-match interval
-                    Interval interval(i + begin, j + begin, NONMATCH);
-                    intervals.push_back(interval);
+    //vars of the finite state machine: currentState, intervalStart, i, c
+    State currentState = BEGIN;
+    uint32_t intervalStart;
+    for (size_t i=0; i<consensusString.size(); ++i) {
+        char c = consensusString[i];
+        switch (currentState) {
+            case BEGIN:
+                switch (c) {
+                    //setting up initial state according to first char
+                    case '*':
+                        currentState = NONMATCH;
+                        intervalStart=0;
+                        break;
+                    default:
+                        currentState = MATCH;
+                        intervalStart=0;
+                        break;
                 }
-                i = j - 1;
-            }
+                break;
+            case MATCH:
+                switch (c) {
+                    case '*':
+                        //end of match interval
+                        //saves match interval
+                        intervals.push_back(Interval(intervalStart, i, IntervalType::MATCH));
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found interval: " << intervals.back();
+
+                        //configures next nonmatch interval
+                        currentState = NONMATCH;
+                        intervalStart=i;
+                        break;
+                    default:
+                        //nothing to do - i is increased
+                        break;
+                }
+                break;
+            case NONMATCH:
+                switch (c) {
+                    case '*':
+                        //nothing to do - i is increased
+                        break;
+                    default:
+                        //end of nonmatch interval
+                        //saves nonmatch interval
+                        intervals.push_back(Interval(intervalStart, i, IntervalType::NONMATCH));
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found interval: " << intervals.back();
+
+                        //configures next match interval
+                        currentState = MATCH;
+                        intervalStart=i;
+                        break;
+                }
+                break;
         }
-         */
     }
 
-    return intervals;
+
+
+    //2. Fix the basic intervals
+    /*
+     * A match can become a non-match if the length is < k
+     *
+     * A non-match can become a match in some cases (remove ):
+     * ----AAAA
+     * AAAA----
+     * ********
+     * If we remove the spaces, then it becomes a match interval
+     * */
+    for (Interval &interval : intervals) {
+        switch (interval.intervalType) {
+            case IntervalType::MATCH:
+                if (interval.getLength() < k) {
+                    //not a match interval anymore
+                    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: match interval " << interval << " is too short to be a match interval - transformed to nonmatch";
+                    interval.intervalType = IntervalType::NONMATCH;
+                }
+                break;
+            case IntervalType::NONMATCH:
+                //check if removing all spaces we have a consensus
+                //TODO: leave this for after, marginal case and will require a good amount of lines
+                break;
+        }
+    }
+
+    //3. Merge consecutive intervals with the same type
+    //another finite state machine...
+    currentState = BEGIN;
+    intervalStart = 0;
+    std::vector<Interval> joinedIntervals;
+    uint32_t i=0;
+    for (const Interval &interval : intervals) {
+        switch (currentState) {
+            case BEGIN:
+                switch (interval.intervalType) {
+                    //setting up initial state according to first interval
+                    case IntervalType::NONMATCH:
+                        currentState = NONMATCH;
+                        intervalStart=0;
+                        break;
+                    case IntervalType::MATCH:
+                        currentState = MATCH;
+                        intervalStart=0;
+                        break;
+                }
+                break;
+            case MATCH:
+                switch (interval.intervalType) {
+                    case IntervalType::NONMATCH:
+                        //end of several match intervals
+                        //join all previous match intervals
+                        joinedIntervals.push_back(Interval(intervals[intervalStart].start, intervals[i-1].end, IntervalType::MATCH));
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: final interval: " << joinedIntervals.back();
+
+                        //configures next nonmatch interval
+                        currentState = NONMATCH;
+                        intervalStart=i;
+                        break;
+                    case IntervalType::MATCH:
+                        //nothing to do - i is increased
+                        break;
+                }
+                break;
+            case NONMATCH:
+                switch (interval.intervalType) {
+                    case IntervalType::NONMATCH:
+                        //nothing to do - i is increased
+                        break;
+                    case IntervalType::MATCH:
+                        //end of several nonmatch intervals
+                        //join all previous nonmatch intervals
+                        joinedIntervals.push_back(Interval(intervals[intervalStart].start, intervals[i-1].end, IntervalType::NONMATCH));
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: final interval: " << joinedIntervals.back();
+
+                        //configures next match interval
+                        currentState = MATCH;
+                        intervalStart=i;
+                        break;
+                }
+                break;
+        }
+        i++;
+    }
+
+    return joinedIntervals;
 }
 
-
-void SubAlignment::expandRYKMSW(const std::string &seq, std::unordered_set<std::string> &representativeSeqs) const {
-    static const std::map<char, std::pair<char, char>> translations = {{'R', {'G', 'A'}},
-                                                                       {'Y', {'T', 'C'}},
-                                                                       {'K', {'G', 'T'}},
-                                                                       {'M', {'A', 'C'}},
-                                                                       {'S', {'G', 'C'}},
-                                                                       {'W', {'A', 'T'}}};
-
-    //get the positions of the bases that are RYKMSW
-    std::vector<size_t> posRYKMSW;
-    for (size_t pos = 0; pos < seq.size(); ++pos) {
-        char c = seq[pos];
-        if (translations.find(c) != translations.end()) //c is RYKMSW
-            posRYKMSW.push_back(pos);
-    }
-
-    //generate a representative seq where the first option is always chosen
-    std::string baseRepresentativeSeq(seq);
-    for (char &c : baseRepresentativeSeq) {
-        if (translations.find(c) != translations.end()) //c is RYKMSW
-            c = translations.at(c).first;
-    }
-
-    //generate all subsets from posRYKMSW
-    //bases on the subset are switched to the second option
-    for (auto &&subset : iter::powerset(posRYKMSW)) {
-        //switch
-        std::string newSeq(baseRepresentativeSeq);
-        for (auto &&pos : subset) {
-            newSeq[pos] = translations.at(seq[pos]).second; //seq contains the original sequence, with not replacements
-        }
-
-        //save newSeq
-        representativeSeqs.insert(newSeq);
-    }
-}
-
-
-std::unordered_set<std::string> SubAlignment::getRepresentativeSequences() const {
+std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
     /**
-     * 1/ Removes "-" from all alignments - TODO: this should be kept on the new version
-     * 2/ Disregards sequences with forbidden chars (allowed are ['A','C','G','T','R','Y','K','M','S','W']). Note: 'N' is not allowed - TODO: N should be allowed and other IUPAC also
-     * 3/ Remove all duplicates
-     * 4/ Expands all IUPAC chars
+     * 1/ Removes "-" from all alignments
+     * 2/ Remove all duplicates
      */
-     //TODO: why not expand 'N' also - in the consensus, 'N' is allowed, here is forbidden (make us ignore the whole sequence in fact)
-     //TODO: 'N' is allowed in the consensus but disallowed here, this can be a source of bugs...
-     //TODO: cosensus string should represent a consensus of the representative sequences...
-    static const std::vector<char> allowedBases = {'A', 'C', 'G', 'T', 'R', 'Y', 'K', 'M', 'S',
-                                                   'W'}; //static so that we don't initialize this over and over again
-
     //get the sequences
     std::vector<std::string> seqs = getSequences();
 
@@ -219,44 +264,77 @@ std::unordered_set<std::string> SubAlignment::getRepresentativeSequences() const
     for (std::string &seq : seqs)
         boost::erase_all(seq, "-");
 
-
-    //filter out seqs with no allowed bases
-    {
-        //TODO: use memory better here?
-        std::vector<std::string> allowedSeqs;
-        allowedSeqs.reserve(seqs.size());
-        for (const std::string &seq : seqs) {
-            if (std::all_of(seq.begin(), seq.end(),
-                    //unary predicator that checks if c is an allowed base
-                            [](char c) {
-                                return std::find(allowedBases.begin(), allowedBases.end(), c) != allowedBases.end();
-                            })) {
-                allowedSeqs.push_back(seq);
-            } else {
-                BOOST_LOG_TRIVIAL(warning)
-                    << "Disconsidering the following sequence in SubAlignment::getRepresentativeSequences() due to having non-allowed base:"
-                    << std::endl << seq;
-            }
-        }
-
-        //move this vector to seqs
-        seqs = std::move(allowedSeqs);
-    }
-
     //remove all duplicates now
     auto it = std::unique(seqs.begin(), seqs.end());
     seqs.resize(std::distance(seqs.begin(), it));
 
-    //expands RYKMSW and saves all new strings to representativeSeqs
-    std::unordered_set<std::string> representativeSeqs;
-    for (const std::string &seq : seqs)
-        expandRYKMSW(seq, representativeSeqs);
+    return seqs;
+}
 
-    //final check
-    BOOST_ASSERT_MSG(representativeSeqs.size() > 0,
-                     "Every sequence must have contained an N in this slice - redo sequence curation because this is nonsense"); //keeping Rachel's nice error message
 
-    return representativeSeqs;
+void SubAlignment::kMeansCluster(const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig, int k) const {
+    //transform sequences into kmer occurance vectors
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: transforming sequences into kmer occurance vectors";
+
+    //TODO: this should be done better, but I don't know how yet... we should use boost MPL
+    //TODO: everytime KSIZE_LIST changes, this should be changed
+    typedef boost::variant <
+            KmerOcurranceBuilder<KMER_SPAN(0)>,
+            KmerOcurranceBuilder<KMER_SPAN(1)>,
+            KmerOcurranceBuilder<KMER_SPAN(2)>,
+            KmerOcurranceBuilder<KMER_SPAN(3)>
+    >  KmerOcurranceBuilderVariant;
+    KmerOcurranceBuilderVariant kmerOcurranceBuilderVariant;
+    if (k < KMER_SPAN(0))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(0)>(&seqWithNoSpace2seqNbsBig, k);
+    else if (k < KMER_SPAN(1))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(1)>(&seqWithNoSpace2seqNbsBig, k);
+    else if (k < KMER_SPAN(2))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(2)>(&seqWithNoSpace2seqNbsBig, k);
+    else if (k < KMER_SPAN(3))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(3)>(&seqWithNoSpace2seqNbsBig, k);
+    else
+        throw gatb::core::system::Exception ("Subalignment::kMeansCluster failure because of unhandled kmer size %d", k);
+
+    boost::apply_visitor(KmerOccuranceBuilderVisitor(), kmerOcurranceBuilderVariant);
+}
+
+
+/**
+     * Split this subalignment into several subaligments, where each is a cluster of similar sequences
+     * @return a vector of subalignments
+     */
+std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: clustering " << *this;
+
+    //get the aligments without - with their IDs
+    std::unordered_map<uint32_t, std::string> seqNb2seqWithNoSpace;
+    //get the sequences without space
+    for (uint32_t sequenceNumber : sequencesNumbers)
+        seqNb2seqWithNoSpace[sequenceNumber] = boost::erase_all_copy(MSA->at(sequenceNumber).substr(interval.start, interval.end - interval.start), "-");
+
+    //divide the sequences into two sets: tooShort (<k) and big (>=k)
+    //also, we will only work on unique sequences, remembering their original numbers
+    std::unordered_map<const std::string *, std::vector<uint32_t>> seqWithNoSpace2seqNbsTooShort, seqWithNoSpace2seqNbsBig;
+    for (const auto &[seqNb, seqWithNoSpace] : seqNb2seqWithNoSpace) {
+        if (seqWithNoSpace.size() < k)
+            seqWithNoSpace2seqNbsTooShort[&seqWithNoSpace].push_back(seqNb);
+        else
+            seqWithNoSpace2seqNbsBig[&seqWithNoSpace].push_back(seqNb);
+    }
+
+    //cluster seqWithNoSpace2seqNbsBig
+    //??? std::vector<std>
+    if (seqWithNoSpace2seqNbsBig.size()>1) {
+        //kMeansCluster(seqWithNoSpace2seqNbsBig, k);
+    }else {
+
+    }
+
+
+    //each seqWithNoSpace2seqNbsTooShort becomes a cluster
+
+    //decompress to get the clusters
 }
 
 
@@ -270,3 +348,4 @@ std::vector<std::string> SubAlignment::getSequences() const {
 
     return sequences;
 }
+

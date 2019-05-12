@@ -16,6 +16,9 @@
 #include <utility>
 #include <cctype>
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
 
 
 //boost libraries includes
@@ -30,6 +33,7 @@
 
 //other libraries includes
 #include <cppitertools/powerset.hpp>
+#include <gatb/gatb_core.hpp>
 
 //renaming namespaces
 namespace logging = boost::log;
