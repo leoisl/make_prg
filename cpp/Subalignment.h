@@ -182,4 +182,105 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 };
 
+
+
+
+//Build a map where the key is all present k-mers and the value is their occurance,
+//Using GATB's 2-bit encoding (thus the template)
+template<size_t span>
+class KmerOcurranceBuilder {
+private:
+    const std::unordered_map<const std::string *, std::vector<uint32_t>> *seqWithNoSpace2seqNbsBig;
+    uint32_t k;
+    typename Kmer<span>::ModelDirect model;
+public:
+    KmerOcurranceBuilder() = default;
+    KmerOcurranceBuilder(const std::unordered_map<const std::string *, std::vector<uint32_t>> *seqWithNoSpace2seqNbsBig,
+                         uint32_t k) :
+            seqWithNoSpace2seqNbsBig{seqWithNoSpace2seqNbsBig}, k{k}, model{k} {}
+    void build() const
+    {
+        //TODO: I thought about using BooMap but it is not the good structure here because it works on a fixed set of k-mers
+        //TODO: more in general, BooMap, GATB's MPHF, BLight, etc... all work on a fixed set of k-mers
+        //TODO: for cheap updates afterwards, a hash map allowing for updates is better
+        //BooMap<typename Kmer<span>::Type , double> kmerToOccurance; //BooMap to hash
+        std::map<typename Kmer<span>::Type , double> kmerToOccurance; //using normal std::map. TODO: improve?
+
+        for (const auto &[seq, dontcare] : *seqWithNoSpace2seqNbsBig) {
+            for (uint32_t i=0; i <= seq->size()-k; ++i){
+                // we get the k-mer
+                std::string kmer = seq->substr(i, k);
+
+                //we expand the non-ACGT bases to all possible translations of this k-mer
+                std::list<std::string> expandedKmers = Utils::expandnonACGT(kmer);
+
+                //the occurance is 1/nb of expanded kmers (i.e. if we have a N in the kmer, each expanded kmer has an occurence of 0.25)
+                double occurance = 1.0 / ((double)expandedKmers.size());
+
+                //now we go through all expanded kmers
+                for (const string &expandedKmer : expandedKmers) {
+                    //here we have just ACGT, so we can use GATB's 2-bit encoding
+                    auto expandedKmerEncoded = model.codeSeed (expandedKmer.c_str(), Data::ASCII);
+
+                    //add to the map
+                    kmerToOccurance[expandedKmerEncoded.value()] += occurance;
+                }
+            }
+        }
+
+        //Now, cluster
+/*
+                # cluster sequences using kmeans
+                logging.debug("Now cluster:")
+                kmeans = KMeans(n_clusters=1, random_state=2).fit(seq_kmer_counts)
+                pre_cluster_inertia = kmeans.inertia_
+
+                if pre_cluster_inertia == 0:
+                    logging.debug("pre_cluster_intertia is 0!")
+                    for key in list(interval_seq_dict.keys()):
+                        logging.debug("seq: %s, num_seqs with this seq: %d", key, len(interval_seq_dict[key]))
+
+                cluster_inertia = pre_cluster_inertia
+                number_of_clusters = 1
+                logging.debug("number of clusters: %d, inertia: %f", number_of_clusters, cluster_inertia)
+                while (cluster_inertia > 0
+                       and cluster_inertia > pre_cluster_inertia / 2 #we cluster until we reach less than half of the initial cluster inertia
+                       and number_of_clusters <= len(interval_seqs)):
+                    number_of_clusters += 1
+                    kmeans = KMeans(n_clusters=number_of_clusters, random_state=2).fit(seq_kmer_counts)
+                    cluster_inertia = kmeans.inertia_
+                    logging.debug("number of clusters: %d, inertia: %f", number_of_clusters, cluster_inertia)
+
+                # now extract the equivalence class details from this partition and return
+                logging.debug("Extract equivalence classes from this partition")
+                if pre_cluster_inertia > 0:
+                    equiv_class_ids = list(kmeans.predict(seq_kmer_counts))
+                    for i in range(max(equiv_class_ids) + 1):
+                        big_return_id_lists.append([])
+                    for i, val in enumerate(equiv_class_ids):
+                        big_return_id_lists[val].extend(interval_seq_dict[interval_seqs[i]])
+                else:
+                    logging.debug("default to not clustering")
+                    big_return_id_lists = [interval_seq_dict[key] for key in interval_seq_dict.keys()]
+            elif len(interval_seqs) == 1:
+                big_return_id_lists = [interval_seq_dict[interval_seqs[0]]]
+
+ */
+    }
+};
+
+
+/**
+ * Visitor that will operate in a model to build the kmer occurance map
+ */
+class KmerOccuranceBuilderVisitor : public boost::static_visitor<> {
+public:
+    template<class T>
+    void operator()(T& kmerOccuranceBuilder) const {
+        kmerOccuranceBuilder.build();
+    }
+};
+
+
+
 #endif //MAKE_PRG_SUBALIGNMENT_H

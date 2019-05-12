@@ -67,7 +67,6 @@ public:
 private: static void expandSequencesRecursively(uint32_t i, const std::string &seq, std::list<std::string> &allExpandedSequences);
 public:
     static std::list<std::string> expandnonACGT(const std::string &seq);
-
 };
 
 

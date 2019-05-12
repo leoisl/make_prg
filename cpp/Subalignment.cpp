@@ -272,67 +272,6 @@ std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
 }
 
 
-/**
- * Visitor that will operate in a model to build the kmer occurance map
- */
-//TODO: everytime KSIZE_LIST changes, this should be changed
-/*typedef boost::variant <
-        BooMap<Kmer<KMER_SPAN(0)>::Type, double>,
-        BooMap<Kmer<KMER_SPAN(1)>::Type, double>,
-        BooMap<Kmer<KMER_SPAN(2)>::Type, double>,
-        BooMap<Kmer<KMER_SPAN(3)>::Type, double>
-> BooMapVariant;
-class KmerOcurranceVisitor : public boost::static_visitor<BooMapVariant> {
-private:
-    const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig;
-    int k;
-public:
-    KmerOcurranceVisitor (const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig, int k) :
-            seqWithNoSpace2seqNbsBig{seqWithNoSpace2seqNbsBig}, k{k} {}
-
-    template<typename T>
-    struct extract_value_type //lets call it extract_value_type
-    {
-        typedef T value_type;
-    };
-
-    template<template<typename> class X, typename T>
-    struct extract_value_type<X<T>>   //specialization
-    {
-        typedef T value_type;
-    };
-
-
-    template<class Model>
-    BooMapVariant  operator() (Model &model) const
-    {
-        BooMap<typename Model::Kmer::value, double> kmerToOccurance; //BooMap to hash
-        for (const auto &[seq, dontcare] : seqWithNoSpace2seqNbsBig) {
-            for (uint32_t i=0; i <= seq->size()-k; ++i){
-                // we get the k-mer
-                std::string kmer = seq->substr(i, k);
-
-                //we expand the non-ACGT bases to all possible translations of this k-mer
-                std::list<std::string> expandedKmers = Utils::expandnonACGT(kmer);
-
-                //the occurance is 1/nb of expanded kmers (i.e. if we have a N in the kmer, each expanded kmer has an occurence of 0.25)
-                double occurance = 1.0 / ((double)expandedKmers.size());
-
-                //now we go through all expanded kmers
-                for (const string &expandedKmer : expandedKmers) {
-                    //here we have just ACGT, so we can use GATB's 2-bit encoding
-                    auto expandedKmerEncoded = model.codeSeed (expandedKmer.c_str(), Data::ASCII);
-
-                    //add to the map
-                    kmerToOccurance.add(expandedKmerEncoded, occurance);
-                }
-            }
-        }
-        return kmerToOccurance;
-    }
-};*/
-
-
 void SubAlignment::kMeansCluster(const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig, int k) const {
     //transform sequences into kmer occurance vectors
     BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: transforming sequences into kmer occurance vectors";
@@ -340,19 +279,24 @@ void SubAlignment::kMeansCluster(const std::unordered_map<const std::string *, s
     //TODO: this should be done better, but I don't know how yet... we should use boost MPL
     //TODO: everytime KSIZE_LIST changes, this should be changed
     typedef boost::variant <
-            Kmer<KMER_SPAN(0)>::ModelDirect,
-            Kmer<KMER_SPAN(1)>::ModelDirect,
-            Kmer<KMER_SPAN(2)>::ModelDirect,
-            Kmer<KMER_SPAN(3)>::ModelDirect
-    >  ModelDirectVariant;
+            KmerOcurranceBuilder<KMER_SPAN(0)>,
+            KmerOcurranceBuilder<KMER_SPAN(1)>,
+            KmerOcurranceBuilder<KMER_SPAN(2)>,
+            KmerOcurranceBuilder<KMER_SPAN(3)>
+    >  KmerOcurranceBuilderVariant;
+    KmerOcurranceBuilderVariant kmerOcurranceBuilderVariant;
+    if (k < KMER_SPAN(0))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(0)>(&seqWithNoSpace2seqNbsBig, k);
+    else if (k < KMER_SPAN(1))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(1)>(&seqWithNoSpace2seqNbsBig, k);
+    else if (k < KMER_SPAN(2))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(2)>(&seqWithNoSpace2seqNbsBig, k);
+    else if (k < KMER_SPAN(3))
+        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(3)>(&seqWithNoSpace2seqNbsBig, k);
+    else
+        throw gatb::core::system::Exception ("Subalignment::kMeansCluster failure because of unhandled kmer size %d", k);
 
-    ModelDirectVariant model;
-    if (k < KMER_SPAN(0))  {  model = Kmer<KMER_SPAN(0)>::ModelDirect(k); }
-    else if (k < KMER_SPAN(1))  {  model = Kmer<KMER_SPAN(1)>::ModelDirect(k); }
-    else if (k < KMER_SPAN(2))  {  model = Kmer<KMER_SPAN(2)>::ModelDirect(k); }
-    else if (k < KMER_SPAN(3))  {  model = Kmer<KMER_SPAN(3)>::ModelDirect(k); }
-    else { throw gatb::core::system::Exception ("Subalignment::kMeansCluster failure because of unhandled kmer size %d", k); }
-    //auto kmerToOccurance = boost::apply_visitor (KmerOcurranceVisitor(seqWithNoSpace2seqNbsBig,k),  model);
+    boost::apply_visitor(KmerOccuranceBuilderVisitor(), kmerOcurranceBuilderVariant);
 }
 
 
