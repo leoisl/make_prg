@@ -26,6 +26,15 @@ public:
         }
     }
 
+    static void openFileForWriting(const std::string &filePath, std::ofstream &stream) {
+        stream.open(filePath);
+        if (!stream.is_open()) {
+            stringstream ss;
+            ss << "Error opening file " << filePath;
+            fatalError(ss.str());
+        }
+    }
+
 
     //Read all strings in the readsFile file and return them as a vector of strings
     static std::vector<std::string> getVectorStringFromFile(const std::string &readsFile) {

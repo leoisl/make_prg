@@ -85,7 +85,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
 
     //get consensus
     std::string consensusString = buildConsensusString();
-    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: consensusString = " << consensusString;
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: consensusString" << std::endl << consensusString;
 
     //check if the interval is too short
     //if (interval.getLength() < k) { //at first I did like this, but Rachel's condition is below better
@@ -93,7 +93,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
         //no reason to continue, let's stop here
         Interval shortInterval {interval};
         shortInterval.intervalType = IntervalType::TOO_SHORT;
-        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: Found a TOO SHORT interval: " << shortInterval;
+        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: Found a TOO SHORT interval: " << std::endl << shortInterval;
 
         intervals.push_back(shortInterval);
         return intervals;
@@ -131,7 +131,8 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                         //end of match interval
                         //saves match interval
                         intervals.push_back(Interval(intervalStart, i, IntervalType::MATCH));
-                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found interval: " << intervals.back();
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
+                                                 << intervals.back();
 
                         //configures next nonmatch interval
                         currentState = NONMATCH;
@@ -151,7 +152,8 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                         //end of nonmatch interval
                         //saves nonmatch interval
                         intervals.push_back(Interval(intervalStart, i, IntervalType::NONMATCH));
-                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found interval: " << intervals.back();
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
+                                                 << intervals.back();
 
                         //configures next match interval
                         currentState = MATCH;
@@ -161,6 +163,21 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                 break;
         }
     }
+    //add the last interval
+    switch (currentState) {
+        case MATCH:
+            //saves match interval
+            intervals.push_back(Interval(intervalStart, consensusString.size(), IntervalType::MATCH));
+            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
+                                     << intervals.back();
+            break;
+        case NONMATCH:
+            //saves match interval
+            intervals.push_back(Interval(intervalStart, consensusString.size(), IntervalType::NONMATCH));
+            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
+                                     << intervals.back();
+            break;
+    }
 
 
 
@@ -168,7 +185,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
     /*
      * A match can become a non-match if the length is < k
      *
-     * A non-match can become a match in some cases (remove ):
+     * A non-match can become a match in some cases eg:
      * ----AAAA
      * AAAA----
      * ********
@@ -179,18 +196,20 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
             case IntervalType::MATCH:
                 if (interval.getLength() < k) {
                     //not a match interval anymore
-                    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: match interval " << interval << " is too short to be a match interval - transformed to nonmatch";
+                    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: " << std::endl << "MATCH interval " << interval << " is too short to be a match interval - transformed to NONMATCH";
                     interval.intervalType = IntervalType::NONMATCH;
                 }
                 break;
             case IntervalType::NONMATCH:
                 //check if removing all spaces we have a consensus
                 //TODO: leave this for after, marginal case and will require a good amount of lines
+                BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: " << std::endl << "WARNING: NOT YET IMPLEMENTED";
                 break;
         }
     }
 
     //3. Merge consecutive intervals with the same type
+    BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals - MERGING intervals...";
     //another finite state machine...
     currentState = BEGIN;
     intervalStart = 0;
@@ -217,7 +236,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                         //end of several match intervals
                         //join all previous match intervals
                         joinedIntervals.push_back(Interval(intervals[intervalStart].start, intervals[i-1].end, IntervalType::MATCH));
-                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: final interval: " << joinedIntervals.back();
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: FINAL interval: " << joinedIntervals.back();
 
                         //configures next nonmatch interval
                         currentState = NONMATCH;
@@ -237,7 +256,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                         //end of several nonmatch intervals
                         //join all previous nonmatch intervals
                         joinedIntervals.push_back(Interval(intervals[intervalStart].start, intervals[i-1].end, IntervalType::NONMATCH));
-                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: final interval: " << joinedIntervals.back();
+                        BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: FINAL interval: " << joinedIntervals.back();
 
                         //configures next match interval
                         currentState = MATCH;
@@ -247,6 +266,19 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                 break;
         }
         i++;
+    }
+    //merge the last interval
+    switch (currentState) {
+        case MATCH:
+            //join all previous match intervals
+            joinedIntervals.push_back(Interval(intervals[intervalStart].start, intervals.back().end, IntervalType::MATCH));
+            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: FINAL interval: " << joinedIntervals.back();
+            break;
+        case NONMATCH:
+            //join all previous nonmatch intervals
+            joinedIntervals.push_back(Interval(intervals[intervalStart].start, intervals.back().end, IntervalType::NONMATCH));
+            BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: FINAL interval: " << joinedIntervals.back();
+            break;
     }
 
     return joinedIntervals;

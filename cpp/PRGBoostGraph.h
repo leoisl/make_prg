@@ -21,7 +21,7 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, const VertexInfo& vertexInfo) {
         os << std::endl << "---------- VertexInfo [BEGIN] ---------" << std::endl
-                        << "Subalignment: " << std::endl << vertexInfo.subAlignment << std::endl
+                        << "Subalignment: " << std::endl << vertexInfo.subAlignment
                         << "Nesting level: " << vertexInfo.nestingLevel << std::endl
                         <<   "---------- VertexInfo [END] -----------";
         return os;

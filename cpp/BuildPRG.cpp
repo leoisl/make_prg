@@ -34,7 +34,7 @@ VertexDescriptor BuildPRG::createVertex(const SubAlignment &subAlignment, uint32
 void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t nestingLevel) {
     BOOST_LOG_TRIVIAL(debug) << "@ BuildPRG::recursivelyBuildGraph: " << std::endl
                              << "subAlignment:" << std::endl
-                             << subAlignment << std::endl
+                             << subAlignment
                              << "Nesting level: " << nestingLevel << std::endl;
 
     //create the vertex representing this subalignment

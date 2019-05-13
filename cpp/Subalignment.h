@@ -175,6 +175,9 @@ public:
             os << sequenceNumber << " ";
         os << std::endl;
         os << "Interval: " << subAlignment.interval << std::endl;
+        std::vector<std::string> sequences = subAlignment.getSequences();
+        for (const std::string seq : sequences)
+            os << seq << std::endl;
         return os;
     }
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,10 +205,13 @@ public:
     {
         //TODO: I thought about using BooMap but it is not the good structure here because it works on a fixed set of k-mers
         //TODO: more in general, BooMap, GATB's MPHF, BLight, etc... all work on a fixed set of k-mers
-        //TODO: for cheap updates afterwards, a hash map allowing for updates is better
-        //BooMap<typename Kmer<span>::Type , double> kmerToOccurance; //BooMap to hash
-        std::map<typename Kmer<span>::Type , double> kmerToOccurance; //using normal std::map. TODO: improve?
+        //TODO: for cheap updates afterwards, a hash map allowing for updates without reconstruction is better
 
+        //1. Create a map associating each kmer to its occurance in each sequence
+        //BooMap<typename Kmer<span>::Type , std::vector<double> > kmerToOccurance; //BooMap to hash
+        std::map<typename Kmer<span>::Type , std::vector<double> > kmerToOccurance; //using normal std::map. TODO: improve?
+
+        uint32_t seqNb = 0;
         for (const auto &[seq, dontcare] : *seqWithNoSpace2seqNbsBig) {
             for (uint32_t i=0; i <= seq->size()-k; ++i){
                 // we get the k-mer
@@ -220,15 +226,38 @@ public:
                 //now we go through all expanded kmers
                 for (const string &expandedKmer : expandedKmers) {
                     //here we have just ACGT, so we can use GATB's 2-bit encoding
-                    auto expandedKmerEncoded = model.codeSeed (expandedKmer.c_str(), Data::ASCII);
+                    auto expandedKmerEncoded = model.codeSeed(expandedKmer.c_str(), Data::ASCII).value();
 
-                    //add to the map
-                    kmerToOccurance[expandedKmerEncoded.value()] += occurance;
+                    //check if the kmer is in the map
+                    if (kmerToOccurance.find(expandedKmerEncoded) == kmerToOccurance.end()) {
+                        //not in the map, add it
+                        kmerToOccurance[expandedKmerEncoded] = std::vector(seqWithNoSpace2seqNbsBig->size(), 0.0);
+                    }
+
+                    //add the count
+                    kmerToOccurance[expandedKmerEncoded][seqNb] += occurance;
                 }
             }
+            ++seqNb;
         }
 
         //Now, cluster
+        //TODO: for now we are using the python code to cluster (so that it has less difference with the python implementation, and we can compare better the other modules),
+        // but we should change to shogun in the future (see https://github.com/iqbal-lab/leandrolima/blob/master/TODOs_and_ideas.txt)
+        //2. Create a file with the kmers counts for each sequence
+        std::ofstream clusterOutFile;
+        Utils::openFileForWriting("cluster.out", clusterOutFile);
+        for (uint32_t i=0; i<seqWithNoSpace2seqNbsBig->size(); ++i) {
+            //TODO: code is not optimized for cache locality here... improve?
+            for (const auto &[kmer, occurances] : kmerToOccurance)
+                clusterOutFile << occurances[i] << ' ';
+            clusterOutFile << std::endl;
+        }
+        clusterOutFile.close();
+
+
+
+
 /*
                 # cluster sequences using kmeans
                 logging.debug("Now cluster:")
