@@ -43,11 +43,11 @@ void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t 
     //find the match/non-match regions and build the children of this node
     {
         //1. get the match and non-match regions
-        //note: this can return a TOO_SHORT
+        //note that the intervals returned here can be MATCH, NONMATCH or TOO_SHORT
         std::vector<Interval> intervals = subAlignment.getMatchAndNonMatchIntervals(k);
 
         //2. create the nodes for each interval, and edges from the parent to these nodes
-        std::vector<VertexDescriptor> nonMatchChildDescriptors; //will store the vertices that are non-match
+        std::vector<VertexDescriptor> nonMatchChildDescriptors; //will store the vertices that are non-match to cluster after
         for (const auto &interval : intervals) {
             //create the node
             VertexDescriptor childVertexDescriptor = createVertex(
@@ -61,7 +61,7 @@ void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t 
             add_edge(parentVertexDescriptor, childVertexDescriptor, graph); //TODO: check return value?
         }
 
-        //3. each non-match child defines a new site
+        //3. each non-match child defines a new site, but first we need to cluster
         for (const VertexDescriptor &nonMatchVertex : nonMatchChildDescriptors) {
             //3.1. checks if the max nesting level has been reached
             if (nestingLevel == maxNestingLevel) {
@@ -71,7 +71,7 @@ void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t 
             }else {
                 //ok, we can proceed
                 //3.2 cluster the sequences in these non-match intervals
-                //std::vector<SubAlignment> clusters = graph[nonMatchVertex].subAlignment.kMeansCluster();
+                std::vector<SubAlignment> clusters = graph[nonMatchVertex].subAlignment.kMeansCluster(k);
 
             }
 

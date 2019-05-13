@@ -76,9 +76,10 @@ std::string SubAlignment::buildConsensusString() const {
 
 /**
  * Return the match and non-match intervals of this subalignment WRT the positions in the global MSA.
+ * The intervals returned here can be MATCH, NONMATCH or TOO_SHORT
  * Consensus sequences longer than k are match intervals and the rest as non-match intervals.
  * @param k - the minimum length to consider a vertical stripe as a match interval
- * @return list of intervals
+ * @return list of intervals that can be MATCH, NONMATCH or TOO_SHORT
  */
 std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) const {
     std::vector<Interval> intervals; //represent match and non-match intervals
@@ -303,32 +304,37 @@ std::vector<std::string> SubAlignment::getRepresentativeSequences() const {
     return seqs;
 }
 
-
-void SubAlignment::kMeansCluster(const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig, int k) const {
+/**
+ * Main clustering algorithm
+ * @param seqWithNoSpace2seqNbsBig
+ * @param k
+ * @return
+ */
+std::vector< std::vector<const std::string *>> SubAlignment::kMeansCluster(const std::vector<const std::string *> &bigSequences, int k) const {
     //transform sequences into kmer occurance vectors
     BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: transforming sequences into kmer occurance vectors";
 
     //TODO: this should be done better, but I don't know how yet... we should use boost MPL
     //TODO: everytime KSIZE_LIST changes, this should be changed
     typedef boost::variant <
-            KmerOcurranceBuilder<KMER_SPAN(0)>,
-            KmerOcurranceBuilder<KMER_SPAN(1)>,
-            KmerOcurranceBuilder<KMER_SPAN(2)>,
-            KmerOcurranceBuilder<KMER_SPAN(3)>
-    >  KmerOcurranceBuilderVariant;
-    KmerOcurranceBuilderVariant kmerOcurranceBuilderVariant;
+            KMeansClusterer<KMER_SPAN(0)>,
+            KMeansClusterer<KMER_SPAN(1)>,
+            KMeansClusterer<KMER_SPAN(2)>,
+            KMeansClusterer<KMER_SPAN(3)>
+    >  KMeansClustererVariant;
+    KMeansClustererVariant kMeansClustererVariant;
     if (k < KMER_SPAN(0))
-        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(0)>(&seqWithNoSpace2seqNbsBig, k);
+        kMeansClustererVariant = KMeansClusterer<KMER_SPAN(0)>(&bigSequences, k);
     else if (k < KMER_SPAN(1))
-        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(1)>(&seqWithNoSpace2seqNbsBig, k);
+        kMeansClustererVariant = KMeansClusterer<KMER_SPAN(1)>(&bigSequences, k);
     else if (k < KMER_SPAN(2))
-        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(2)>(&seqWithNoSpace2seqNbsBig, k);
+        kMeansClustererVariant = KMeansClusterer<KMER_SPAN(2)>(&bigSequences, k);
     else if (k < KMER_SPAN(3))
-        kmerOcurranceBuilderVariant = KmerOcurranceBuilder<KMER_SPAN(3)>(&seqWithNoSpace2seqNbsBig, k);
+        kMeansClustererVariant = KMeansClusterer<KMER_SPAN(3)>(&bigSequences, k);
     else
         throw gatb::core::system::Exception ("Subalignment::kMeansCluster failure because of unhandled kmer size %d", k);
 
-    boost::apply_visitor(KmerOccuranceBuilderVisitor(), kmerOcurranceBuilderVariant);
+    boost::apply_visitor(KMeansClustererVisitor(), kMeansClustererVariant);
 }
 
 
@@ -356,9 +362,12 @@ std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
     }
 
     //cluster seqWithNoSpace2seqNbsBig
-    //??? std::vector<std>
+    vector<const std::string *> bigSequences;
+    for (const auto &[seq, dontcare] : seqWithNoSpace2seqNbsBig)
+        bigSequences.push_back(seq);
+
     if (seqWithNoSpace2seqNbsBig.size()>1) {
-        //kMeansCluster(seqWithNoSpace2seqNbsBig, k);
+        kMeansCluster(bigSequences, k);
     }else {
 
     }

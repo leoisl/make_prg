@@ -55,7 +55,7 @@ private:
     std::string buildConsensusString() const;
 
     //TODO: document
-    void kMeansCluster(const std::unordered_map<const std::string *, std::vector<uint32_t>> &seqWithNoSpace2seqNbsBig, int k) const;
+    std::vector< std::vector<const std::string *>> kMeansCluster(const std::vector<const std::string *> &bigSequences, int k) const;
 
 public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -188,19 +188,19 @@ public:
 
 
 
-//Build a map where the key is all present k-mers and the value is their occurance,
+//Cluster sequences based on their kmer content
 //Using GATB's 2-bit encoding (thus the template)
 template<size_t span>
-class KmerOcurranceBuilder {
+class KMeansClusterer {
 private:
-    const std::unordered_map<const std::string *, std::vector<uint32_t>> *seqWithNoSpace2seqNbsBig;
+    const std::vector<const std::string *> *bigSequences;
     uint32_t k;
     typename Kmer<span>::ModelDirect model;
 public:
-    KmerOcurranceBuilder() = default;
-    KmerOcurranceBuilder(const std::unordered_map<const std::string *, std::vector<uint32_t>> *seqWithNoSpace2seqNbsBig,
+    KMeansClusterer() = default;
+    KMeansClusterer(const std::vector<const std::string *> *bigSequences,
                          uint32_t k) :
-            seqWithNoSpace2seqNbsBig{seqWithNoSpace2seqNbsBig}, k{k}, model{k} {}
+            bigSequences{bigSequences}, k{k}, model{k} {}
     void build() const
     {
         //TODO: I thought about using BooMap but it is not the good structure here because it works on a fixed set of k-mers
@@ -212,7 +212,7 @@ public:
         std::map<typename Kmer<span>::Type , std::vector<double> > kmerToOccurance; //using normal std::map. TODO: improve?
 
         uint32_t seqNb = 0;
-        for (const auto &[seq, dontcare] : *seqWithNoSpace2seqNbsBig) {
+        for (const std::string* seq : *bigSequences) {
             for (uint32_t i=0; i <= seq->size()-k; ++i){
                 // we get the k-mer
                 std::string kmer = seq->substr(i, k);
@@ -231,7 +231,7 @@ public:
                     //check if the kmer is in the map
                     if (kmerToOccurance.find(expandedKmerEncoded) == kmerToOccurance.end()) {
                         //not in the map, add it
-                        kmerToOccurance[expandedKmerEncoded] = std::vector(seqWithNoSpace2seqNbsBig->size(), 0.0);
+                        kmerToOccurance[expandedKmerEncoded] = std::vector(bigSequences->size(), 0.0);
                     }
 
                     //add the count
@@ -247,7 +247,7 @@ public:
         //2. Create a file with the kmers counts for each sequence
         std::ofstream clusterOutFile;
         Utils::openFileForWriting("cluster.out", clusterOutFile);
-        for (uint32_t i=0; i<seqWithNoSpace2seqNbsBig->size(); ++i) {
+        for (uint32_t i=0; i<bigSequences->size(); ++i) {
             //TODO: code is not optimized for cache locality here... improve?
             for (const auto &[kmer, occurances] : kmerToOccurance)
                 clusterOutFile << occurances[i] << ' ';
@@ -300,13 +300,13 @@ public:
 
 
 /**
- * Visitor that will operate in a model to build the kmer occurance map
+ * Visitor that will call the correct template of kMeansClusterer
  */
-class KmerOccuranceBuilderVisitor : public boost::static_visitor<> {
+class KMeansClustererVisitor : public boost::static_visitor<> {
 public:
     template<class T>
-    void operator()(T& kmerOccuranceBuilder) const {
-        kmerOccuranceBuilder.build();
+    void operator()(T& kMeansClusterer) const {
+        kMeansClusterer.build();
     }
 };
 
