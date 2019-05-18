@@ -51,7 +51,45 @@ void Utils::expandSequencesRecursively(uint32_t i, const std::string &seq, std::
 }
 
 std::list<std::string> Utils::expandnonACGT(const std::string &seq) {
-    std::list<std::string> allExpandedSequences;
+    std::list<std::string> allExpandedSequences = {""};
     expandSequencesRecursively(0, seq, allExpandedSequences);
     return allExpandedSequences;
+}
+
+
+void Utils::executeCommand(const std::string &command, bool verbose, const std::string &messageIfItFails) {
+    // run a process and create a streambuf that reads its stdout and stderr
+    if (verbose)
+        cerr << "Executing " << command << "..." << endl;
+
+    //create the process
+    redi::ipstream proc(command, redi::pstreams::pstdout | redi::pstreams::pstderr);
+    string line;
+
+    // read child's stdout
+    while (getline(proc.out(), line)) {
+        if (verbose)
+            cout << line << endl;
+    }
+    // read child's stderr
+    while (getline(proc.err(), line)) {
+        if (verbose)
+            cerr << line << endl;
+    }
+
+    //check exit status
+    proc.close();
+    if (proc.rdbuf()->exited()) {
+        if (proc.rdbuf()->status() != 0) {
+            stringstream ss;
+            ss << "Error executing " << command << ". Exit status: " << proc.rdbuf()->status() << endl;
+            if (messageIfItFails != "")
+                ss << "Message: " << messageIfItFails << endl;
+            fatalError(ss.str());
+        }
+        if (verbose)
+            cerr << "Executing " << command << " - Done!" << endl;
+    }
+    else
+        fatalError("On executeCommand()");
 }

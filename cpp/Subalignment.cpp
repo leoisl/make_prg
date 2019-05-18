@@ -334,7 +334,7 @@ std::vector< std::vector<const std::string *>> SubAlignment::kMeansCluster(const
     else
         throw gatb::core::system::Exception ("Subalignment::kMeansCluster failure because of unhandled kmer size %d", k);
 
-    boost::apply_visitor(KMeansClustererVisitor(), kMeansClustererVariant);
+    return boost::apply_visitor(KMeansClustererVisitor(), kMeansClustererVariant);
 }
 
 
@@ -366,16 +366,18 @@ std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
     for (const auto &[seq, dontcare] : seqWithNoSpace2seqNbsBig)
         bigSequences.push_back(seq);
 
+    std::vector< std::vector<const std::string *>> bigSequencesClustered;
+
     if (seqWithNoSpace2seqNbsBig.size()>1) {
-        kMeansCluster(bigSequences, k);
+        bigSequencesClustered = kMeansCluster(bigSequences, k);
     }else {
-
+        bigSequencesClustered = {{bigSequences[0]}};
     }
-
 
     //each seqWithNoSpace2seqNbsTooShort becomes a cluster
 
     //decompress to get the clusters
+    return {};
 }
 
 

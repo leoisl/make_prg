@@ -35,6 +35,8 @@ public:
         }
     }
 
+    static void executeCommand(const string &command, bool verbose=true, const string &messageIfItFails="");
+
 
     //Read all strings in the readsFile file and return them as a vector of strings
     static std::vector<std::string> getVectorStringFromFile(const std::string &readsFile) {

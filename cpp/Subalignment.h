@@ -201,8 +201,7 @@ public:
     KMeansClusterer(const std::vector<const std::string *> *bigSequences,
                          uint32_t k) :
             bigSequences{bigSequences}, k{k}, model{k} {}
-    void build() const
-    {
+    std::vector<std::vector<const std::string *>> cluster() const {
         //TODO: I thought about using BooMap but it is not the good structure here because it works on a fixed set of k-mers
         //TODO: more in general, BooMap, GATB's MPHF, BLight, etc... all work on a fixed set of k-mers
         //TODO: for cheap updates afterwards, a hash map allowing for updates without reconstruction is better
@@ -246,7 +245,7 @@ public:
         // but we should change to shogun in the future (see https://github.com/iqbal-lab/leandrolima/blob/master/TODOs_and_ideas.txt)
         //2. Create a file with the kmers counts for each sequence
         std::ofstream clusterOutFile;
-        Utils::openFileForWriting("cluster.out", clusterOutFile);
+        Utils::openFileForWriting("cluster.in", clusterOutFile);
         for (uint32_t i=0; i<bigSequences->size(); ++i) {
             //TODO: code is not optimized for cache locality here... improve?
             for (const auto &[kmer, occurances] : kmerToOccurance)
@@ -254,6 +253,8 @@ public:
             clusterOutFile << std::endl;
         }
         clusterOutFile.close();
+
+        Utils::executeCommand("python cluster.py cluster.in cluster.out")
 
 
 
@@ -295,6 +296,7 @@ public:
                 big_return_id_lists = [interval_seq_dict[interval_seqs[0]]]
 
  */
+        return {};
     }
 };
 
@@ -302,11 +304,11 @@ public:
 /**
  * Visitor that will call the correct template of kMeansClusterer
  */
-class KMeansClustererVisitor : public boost::static_visitor<> {
+class KMeansClustererVisitor : public boost::static_visitor<std::vector<std::vector<const std::string *>>> {
 public:
     template<class T>
-    void operator()(T& kMeansClusterer) const {
-        kMeansClusterer.build();
+    std::vector<std::vector<const std::string *>> operator()(T& kMeansClusterer) const {
+        return kMeansClusterer.cluster();
     }
 };
 

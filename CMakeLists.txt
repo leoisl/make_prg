@@ -35,6 +35,16 @@ link_directories(${Boost_LIBRARY_DIR})
 ################################################################################
 
 
+################################################################################
+# pstreams configuration
+################################################################################
+# We add the pstreams include directory
+set (PSTREAMS_SOURCE_DIR ${PROJECT_SOURCE_DIR}/pstreams/)
+include_directories (${PSTREAMS_SOURCE_DIR})
+################################################################################
+# pstreams configuration
+################################################################################
+
 
 ################################################################################
 # GATB configuration
@@ -100,6 +110,9 @@ include_directories(${PROJECT_SOURCE_DIR} "${PROJECT_SOURCE_DIR}/BooM/include")
 file (GLOB_RECURSE  SOURCE_FILES  ${PROJECT_SOURCE_DIR}/cpp/*.cpp)
 add_executable(make_prg ${SOURCE_FILES})
 target_link_libraries(make_prg ${Boost_LIBRARIES} ${gatb-core-libraries} -static-libgcc -static-libstdc++)
+
+#copy the cluster file to the build folder
+configure_file(${PROJECT_SOURCE_DIR}/cpp/cluster.py ${PROJECT_BINARY_DIR} COPYONLY)
 ################################################################################
 # Building the target
 ################################################################################

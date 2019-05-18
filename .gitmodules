@@ -10,3 +10,6 @@
 [submodule "BooM"]
 	path = BooM
 	url = https://github.com/leoisl/BooM
+[submodule "pstreams"]
+	path = pstreams
+	url = https://github.com/jwakely/pstreams/
