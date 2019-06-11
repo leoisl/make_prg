@@ -1,3 +1,6 @@
+max_nesting level default should be 5
+
+
 Points to clarify:
 
 1/ Translation from python code to C++ code only, or other approaches to attack the problem are accepted?
