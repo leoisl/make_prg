@@ -11,3 +11,5 @@ Points to clarify:
 	1/ 1 MSA is added to the graph as a node;
 	2/ A next MSA is added by breaking the graph into the graph that represent all MSA;
 	3/ This is dynamic: we can just add new MSA to previously computed graphs, and that's it.
+
+4/ We need to build PRGs from either MSAs or VCFs+reference
