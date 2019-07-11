@@ -3,7 +3,7 @@
 Graph-based approach, I'd say many things are wrong, but maybe can be built upon this (or not!)
 
 ## Build and compile:
-`mkdir build && cd build && cmake .. && make`
+`mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j <threads>`
 
 
 ## Running (will run the test cases):
