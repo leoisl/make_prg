@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.3)
 project(make_prg)
 
 
-#TODO: really require c++17?
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 
 

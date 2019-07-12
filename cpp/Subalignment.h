@@ -231,7 +231,7 @@ public:
                     //check if the kmer is in the map
                     if (kmerToOccurance.find(expandedKmerEncoded) == kmerToOccurance.end()) {
                         //not in the map, add it
-                        kmerToOccurance[expandedKmerEncoded] = std::vector(bigSequences->size(), 0.0);
+                        kmerToOccurance[expandedKmerEncoded] = std::vector<double>(bigSequences->size(), 0.0);
                     }
 
                     //add the count

@@ -32,7 +32,6 @@
 #include <boost/assert.hpp>
 
 //other libraries includes
-#include <cppitertools/powerset.hpp>
 #include <gatb/gatb_core.hpp>
 
 //renaming namespaces
