@@ -3,6 +3,7 @@
 //
 
 #include "Subalignment.h"
+#include "Utils.h"
 
 std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
     switch (intervalType) {
@@ -34,12 +35,12 @@ std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
  *
  * @return a consensus of the alignment
  */
-std::string SubAlignment::buildConsensusString() const {
+Consensus SubAlignment::buildConsensusString() const {
     //TODO: issue warning on many non ACGT- bases?
     static const std::string consensusBases{"ACGT-"}; //which bases should we have in the final consensus?
 
     //generate the consensus string
-    std::string consensusString;
+    Consensus consensusString;
     for (size_t j = interval.start; j < interval.end; ++j) {
         //1. Checks which base can be accepted as consensus in this column
         std::string acceptedBases;
@@ -60,14 +61,17 @@ std::string SubAlignment::buildConsensusString() const {
             }
         }
 
-        //2. chooses a random accepted base if there was a consensus
-        char acceptedBase = '*'; //assumes no consensus
-        if (acceptedBases.size() > 0) {
-            //we had a consensus, choose random base from the accepted ones
-            acceptedBase = acceptedBases[std::rand() % acceptedBases.size()];
+        //2. checks if we only have one accepted bases - this should be the case, otherwise sequence curation must be done
+        if (acceptedBases.size() > 1) {
+            BOOST_LOG_TRIVIAL(fatal) << "There are more than 1 candidate base for column " << j << " of the MSA, please redo sequence curation";
+            std::exit(1);
         }
 
-        //3. add the accpted base to the consensus string
+        //3. checks if we have a consensus
+        char acceptedBase = '*'; //assumes no consensus
+        if (acceptedBases.size() == 1) acceptedBase = acceptedBases[0];
+
+        //3. add the accepted base to the consensus string
         consensusString += acceptedBase;
     }
 
@@ -85,12 +89,11 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
     std::vector<Interval> intervals; //represent match and non-match intervals
 
     //get consensus
-    std::string consensusString = buildConsensusString();
+    Consensus consensusString = buildConsensusString();
     BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: consensusString" << std::endl << consensusString;
 
     //check if the interval is too short
-    //if (interval.getLength() < k) { //at first I did like this, but Rachel's condition is below better
-    if (boost::erase_all_copy(consensusString, "-").size() < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
+    if (consensusString.getSizeWithoutSpaces() < k) { //if len(self.consensus.replace('-', '')) < self.min_match_length:
         //no reason to continue, let's stop here
         Interval shortInterval {interval};
         shortInterval.intervalType = IntervalType::TOO_SHORT;
@@ -345,7 +348,27 @@ std::vector< std::vector<const std::string *>> SubAlignment::kMeansCluster(const
 std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
     BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: clustering " << *this;
 
-    //get the aligments without - with their IDs
+    std::string filename = Utils::random_string(64);
+    std::ofstream msaFile;
+    Utils::openFileForWriting(filename, msaFile);
+    for (uint32_t sequenceNumber : sequencesNumbers)
+        msaFile << MSA->at(sequenceNumber).substr(interval.start, interval.end - interval.start) << std::endl;
+    msaFile.close();
+
+    {
+        std::stringstream ss;
+        ss << "python3 cluster.py " << filename << " " << k;
+        Utils::executeCommand(ss.str());
+    }
+
+
+
+
+
+
+
+    /*
+    //get the aligments without '-' with their IDs
     std::unordered_map<uint32_t, std::string> seqNb2seqWithNoSpace;
     //get the sequences without space
     for (uint32_t sequenceNumber : sequencesNumbers)
@@ -376,6 +399,7 @@ std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
     //each seqWithNoSpace2seqNbsTooShort becomes a cluster
 
     //decompress to get the clusters
+     */
 }
 
 

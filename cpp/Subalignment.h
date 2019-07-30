@@ -41,6 +41,14 @@ public:
     }
 };
 
+class Consensus : public std::string {
+public:
+    using string::string;
+    uint32_t getSizeWithoutSpaces() const {
+        return boost::erase_all_copy(*this, "-").size();
+    }
+};
+
 class SubAlignment {
 private:
     /*
@@ -52,7 +60,7 @@ private:
 
 
     //builds the consensus string of this subalignment
-    std::string buildConsensusString() const;
+    Consensus buildConsensusString() const;
 
     //TODO: document
     std::vector< std::vector<const std::string *>> kMeansCluster(const std::vector<const std::string *> &bigSequences, int k) const;

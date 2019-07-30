@@ -95,7 +95,7 @@ link_directories (${gatb-core-extra-libraries-path})
 ################################################################################
 # Building the target
 ################################################################################
-include_directories(${PROJECT_SOURCE_DIR} "${PROJECT_SOURCE_DIR}/BooM/include")
+include_directories(${PROJECT_SOURCE_DIR} "${PROJECT_SOURCE_DIR}/BooM/include" "${PROJECT_SOURCE_DIR}/pstreams")
 file (GLOB_RECURSE  SOURCE_FILES  ${PROJECT_SOURCE_DIR}/cpp/*.cpp)
 add_executable(make_prg ${SOURCE_FILES})
 target_link_libraries(make_prg ${Boost_LIBRARIES} ${gatb-core-libraries} -static-libgcc -static-libstdc++)

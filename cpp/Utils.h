@@ -7,9 +7,12 @@
 
 #include "includes.h"
 
+
 //utility functions (auto explanatory)
 class Utils {
 public:
+    static std::string random_string(std::string::size_type length);
+
     static void fatalError(const std::string &message) {
         std::cerr << std::endl << std::endl << "[FATAL ERROR] " << message << std::endl << std::endl;
         std::cerr.flush();
@@ -35,6 +38,7 @@ public:
         }
     }
 
+    static void executeCommand(const string &command, bool verbose=true, const string &messageIfItFails="");
 
     //Read all strings in the readsFile file and return them as a vector of strings
     static std::vector<std::string> getVectorStringFromFile(const std::string &readsFile) {
