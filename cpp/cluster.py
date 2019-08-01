@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+
+'''
+Excerpt of python code from the original make_prg
+Usage: python3 cluster.py <msa_file> <min_match_length>
+It will cluster the sequences given in the MSA file
+This will be eventually replace by a C++ code, but it will be hard to debug differences due to the clustering.
+So let's first keep the clustering step the same.
+'''
+
 from Bio import AlignIO
 import logging
 from sklearn.cluster import KMeans
@@ -140,9 +149,8 @@ def cluster(msa_file, min_match_length):
         "should have some alternate alleles, not only one sequence, this is a non-match interval"
 
 
-    for cluster in return_id_lists:
-        for sequence_index in cluster:
-            sequence_index = int(sequence_index)
-            print(interval_alignment[sequence_index])
+    with open(f"{msa_file}.out", "w") as fout:
+        for cluster in return_id_lists:
+            print(" ".join(cluster), file=fout)
 
 cluster(sys.argv[1], int(sys.argv[2]))

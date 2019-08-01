@@ -164,9 +164,9 @@ public:
 
     /**
      * Split this subalignment into several subaligments, where each is a cluster of similar sequences
-     * @return a vector of subalignments
      */
-    std::vector<SubAlignment> kMeansCluster(uint32_t k) const;
+    using Clusters = std::vector<SubAlignment>;
+    Clusters kMeansCluster(uint32_t k) const;
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //MAIN METHODS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

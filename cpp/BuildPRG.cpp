@@ -71,10 +71,12 @@ void BuildPRG::recursivelyBuildGraph(const SubAlignment &subAlignment, uint32_t 
             }else {
                 //ok, we can proceed
                 //3.2 cluster the sequences in these non-match intervals
-                std::vector<SubAlignment> clusters = graph[nonMatchVertex].subAlignment.kMeansCluster(k);
+                SubAlignment::Clusters clusters = graph[nonMatchVertex].subAlignment.kMeansCluster(k);
 
+                //recursion on each cluster
+                for (const auto &subAlignment : clusters)
+                    recursivelyBuildGraph(subAlignment, nestingLevel+1);
             }
-
         }
     }
 }

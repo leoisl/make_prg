@@ -35,7 +35,7 @@ private:
     VertexDescriptor createVertex(const SubAlignment &subAlignment, uint32_t nestingLevel);
 
 public:
-    BuildPRG(const std::string &filepath, uint32_t k=3, uint32_t maxNestingLevel=2, std::string sep=" ") :
+    BuildPRG(const std::string &filepath, uint32_t k=3, uint32_t maxNestingLevel=5, std::string sep=" ") :
     MSA{}, k{k}, maxNestingLevel{maxNestingLevel}, graph{}, sep{sep} {
       //TODO: THIS IS REALLY BAD AND SHOULD BE OPTIMIZED
       readMSAFromFastaFile(filepath);

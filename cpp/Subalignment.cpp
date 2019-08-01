@@ -4,6 +4,9 @@
 
 #include "Subalignment.h"
 #include "Utils.h"
+#define BOOST_NO_CXX11_SCOPED_ENUMS
+#include <boost/filesystem.hpp>
+#undef BOOST_NO_CXX11_SCOPED_ENUMS
 
 std::ostream &operator<<(std::ostream &os, const IntervalType &intervalType) {
     switch (intervalType) {
@@ -113,6 +116,7 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
     //vars of the finite state machine: currentState, intervalStart, i, c
     State currentState = BEGIN;
     uint32_t intervalStart;
+    uint32_t intervalEnd;
     for (size_t i=0; i<consensusString.size(); ++i) {
         char c = consensusString[i];
         switch (currentState) {
@@ -121,11 +125,11 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                     //setting up initial state according to first char
                     case '*':
                         currentState = NONMATCH;
-                        intervalStart=0;
+                        intervalStart=interval.start;
                         break;
                     default:
                         currentState = MATCH;
-                        intervalStart=0;
+                        intervalStart=interval.start;
                         break;
                 }
                 break;
@@ -133,14 +137,16 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                 switch (c) {
                     case '*':
                         //end of match interval
+                        intervalEnd=i+interval.start;
+
                         //saves match interval
-                        intervals.push_back(Interval(intervalStart, i, IntervalType::MATCH));
+                        intervals.push_back(Interval(intervalStart, intervalEnd, IntervalType::MATCH));
                         BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
                                                  << intervals.back();
 
                         //configures next nonmatch interval
                         currentState = NONMATCH;
-                        intervalStart=i;
+                        intervalStart=intervalEnd;
                         break;
                     default:
                         //nothing to do - i is increased
@@ -154,30 +160,33 @@ std::vector<Interval> SubAlignment::getMatchAndNonMatchIntervals(uint32_t k) con
                         break;
                     default:
                         //end of nonmatch interval
+                        intervalEnd=i+interval.start;
+
                         //saves nonmatch interval
-                        intervals.push_back(Interval(intervalStart, i, IntervalType::NONMATCH));
+                        intervals.push_back(Interval(intervalStart, intervalEnd, IntervalType::NONMATCH));
                         BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
                                                  << intervals.back();
 
                         //configures next match interval
                         currentState = MATCH;
-                        intervalStart=i;
+                        intervalStart=intervalEnd;
                         break;
                 }
                 break;
         }
     }
     //add the last interval
+    intervalEnd = interval.start + consensusString.size();
     switch (currentState) {
         case MATCH:
             //saves match interval
-            intervals.push_back(Interval(intervalStart, consensusString.size(), IntervalType::MATCH));
+            intervals.push_back(Interval(intervalStart, intervalEnd, IntervalType::MATCH));
             BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
                                      << intervals.back();
             break;
         case NONMATCH:
             //saves match interval
-            intervals.push_back(Interval(intervalStart, consensusString.size(), IntervalType::NONMATCH));
+            intervals.push_back(Interval(intervalStart, intervalEnd, IntervalType::NONMATCH));
             BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::getMatchAndNonMatchIntervals: found BASIC interval: " << std::endl
                                      << intervals.back();
             break;
@@ -342,32 +351,67 @@ std::vector< std::vector<const std::string *>> SubAlignment::kMeansCluster(const
 
 
 /**
-     * Split this subalignment into several subaligments, where each is a cluster of similar sequences
-     * @return a vector of subalignments
-     */
-std::vector<SubAlignment> SubAlignment::kMeansCluster(uint32_t k) const {
+ * Split this subalignment into several subaligments, where each is a cluster of similar sequences
+ */
+SubAlignment::Clusters SubAlignment::kMeansCluster(uint32_t k) const {
     BOOST_LOG_TRIVIAL(debug) << "@SubAlignment::kMeansCluster: clustering " << *this;
 
-    std::string filename = Utils::random_string(64);
-    std::ofstream msaFile;
-    Utils::openFileForWriting(filename, msaFile);
-    for (uint32_t sequenceNumber : sequencesNumbers)
-        msaFile << MSA->at(sequenceNumber).substr(interval.start, interval.end - interval.start) << std::endl;
-    msaFile.close();
+    Clusters clusters;
 
+    //get a random filename
+    std::string filename = Utils::random_string(64);
+    std::string out_filename = filename+".out";
+
+    //create the file with the MSA to be clustered
+    {
+        std::ofstream msaFile;
+        Utils::openFileForWriting(filename, msaFile);
+        for (uint32_t sequenceNumber : sequencesNumbers)
+            msaFile << ">" << sequenceNumber << std::endl <<
+                    MSA->at(sequenceNumber).substr(interval.start, interval.end - interval.start) << std::endl;
+        msaFile.close();
+    }
+
+    //cluster the sequences using python script for the moment
+    //TODO: fix this: use c++
     {
         std::stringstream ss;
-        ss << "python3 cluster.py " << filename << " " << k;
+        ss << "../venv/bin/python cluster.py " << filename << " " << k;
         Utils::executeCommand(ss.str());
     }
 
+    //create the clusters
+    {
+        //read the text output file
+        auto clustersAsText = Utils::getVectorStringFromFile(out_filename);
 
 
+        for (const auto &clusterAsText : clustersAsText) {
+            //get the sequences in this cluster
+            std::vector<uint32_t> sequencesNumbersInTheCluster;
+            uint32_t sequenceNumber;
+            stringstream ss;
+            ss << clusterAsText;
+            while (ss >> sequenceNumber) {
+                sequencesNumbersInTheCluster.push_back(sequenceNumber);
+            }
+
+            //add the cluster
+            Interval newInterval(interval.start, interval.end, IntervalType::UNPROCESSED); //new cluster is unprocessed - we will process is recursively
+            clusters.push_back(SubAlignment(sequencesNumbersInTheCluster, newInterval, MSA));
+        }
+    }
+
+    //clean up
+    boost::filesystem::remove(filename);
+    boost::filesystem::remove(out_filename);
 
 
+    return clusters;
 
 
     /*
+     * TODO: old clustering code, keeping here since we might need it
     //get the aligments without '-' with their IDs
     std::unordered_map<uint32_t, std::string> seqNb2seqWithNoSpace;
     //get the sequences without space
