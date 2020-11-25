@@ -168,7 +168,7 @@ def write_prg(output_prefix: str, prg_string: str):
 
         max_nest = int(match.group("max_nest"))
         min_match = int(match.group("min_match"))
-        header = f"{sample} max_nest={max_nest} min_match={min_match}"
+        header = f"{sample}"
         print(f">{header}\n{prg_string}", file=prg)
 
     prg_ints_fpath = Path(output_prefix + ".bin")
