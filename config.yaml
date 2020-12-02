@@ -1,0 +1,5 @@
+msas_dir:   tests/snakemake/msas
+output_dir: make_prg_out
+threads: 8
+containers:
+  make_prg: docker://leandroishilima/make_prg:c61d9b
