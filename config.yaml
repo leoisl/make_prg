@@ -1,4 +1,4 @@
-msas_dir:   tests/snakemake/msas
+msas_dir:   tests/data/make_prg_from_msa
 output_dir: make_prg_out
 threads: 8
 containers:

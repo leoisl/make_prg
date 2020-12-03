@@ -20,18 +20,21 @@ def infer_gene_from_msa(msa):
 def run_make_prg(msa):
     gene = infer_gene_from_msa(msa)
 
-    start = time.time()
-
     logging.info(f"Running make_prg for {gene}")
+    start = time.time()
     os.system(f"make_prg from_msa --max_nesting {max_nesting_lvl} --min_match_length {min_match_length} "
-              f"--prefix {gene} {msa}")
-    os.makedirs(output_folder, exist_ok=True)
-    os.rename(f"{gene}.max_nest{max_nesting_lvl}.min_match{min_match_length}.prg", f"{output_folder}/{gene}.prg.fa")
-
+              f"--prefix {gene} {msa} >/dev/null 2>/dev/null")
     stop = time.time()
     runtime = stop - start
     logging.info(f"Finished running make_prg for {gene}")
-    logging.info(f"make_prg runtime for {gene} in seconds: {runtime:.3f}")
+
+    os.makedirs(output_folder, exist_ok=True)
+    prg_file = Path(f"{gene}.max_nest{max_nesting_lvl}.min_match{min_match_length}.prg")
+    if prg_file.exists():
+        logging.info(f"[SUCESS] {gene} make_prg runtime in seconds: {runtime:.3f}")
+        os.rename(str(prg_file), f"{output_folder}/{gene}.prg.fa")
+    else:
+        logging.info(f"[ERROR] {gene}")
 
 
 MSAs = snakemake.input.MSAs
